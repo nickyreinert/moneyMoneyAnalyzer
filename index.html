@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money Money Analyzer</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        button { margin: 5px; padding: 10px; }
+        input { margin: 5px; padding: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; cursor: pointer; }
+        th:hover { background-color: #ddd; }
+        canvas { max-width: 100%; height: 400px; }
+        .chart-container { display: flex; flex-direction: column; }
+        .filters { margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Money Money Analyzer</h1>
+    <div class="filters">
+        <input type="file" id="csvFile" accept=".csv">
+        <button id="loadBtn">Load CSV</button>
+        <div id="yearButtons"></div>
+        <button id="resetDrillBtn">Reset Drill</button>
+    </div>
+    <div class="chart-container">
+        <canvas id="combinedChart"></canvas>
+    </div>
+    <table id="transactionTable">
+        <thead>
+            <tr>
+                <th data-column="date">Date <input type="text" placeholder="Filter Date"></th>
+                <th data-column="name">Name <input type="text" placeholder="Filter Name"></th>
+                <th data-column="verwendungszweck">Verwendungszweck <input type="text" placeholder="Filter Verwendungszweck"></th>
+                <th data-column="betrag">Betrag <input type="text" placeholder="Filter Betrag"></th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        let data = [];
+        let filteredData = [];
+        let currentPath = [];
+        let combinedChart;
+
+        document.getElementById('loadBtn').addEventListener('click', loadCSV);
+        document.getElementById('resetDrillBtn').addEventListener('click', resetDrill);
+
+        // Load from localStorage on page load
+        window.addEventListener('load', () => {
+            const storedCsv = localStorage.getItem('csvData');
+            if (storedCsv) {
+                parseCSV(storedCsv);
+                populateYears();
+                const storedYear = localStorage.getItem('selectedYear');
+                if (storedYear) {
+                    filterByYear(storedYear);
+                } else {
+                    renderCharts();
+                    renderTable();
+                }
+                const storedPath = localStorage.getItem('currentPath');
+                if (storedPath) {
+                    currentPath = JSON.parse(storedPath);
+                    renderCharts();
+                    renderTable();
+                }
+            }
+        });
+
+        function loadCSV() {
+            const file = document.getElementById('csvFile').files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const csv = e.target.result;
+                localStorage.setItem('csvData', csv);
+                parseCSV(csv);
+                populateYears();
+                renderCharts();
+                renderTable();
+            };
+            reader.readAsText(file);
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.split('\n');
+            const headers = lines[0].split(';');
+            data = lines.slice(1).filter(line => line.trim()).map(line => {
+                const values = line.split(';');
+                const obj = {};
+                headers.forEach((h, i) => obj[h] = values[i]);
+                obj.date = parseDate(obj.Datum);
+                obj.categories = obj.Kategorie.split(' - ');
+                obj.inOut = parseFloat(obj.Betrag.replace(',', '.')) > 0 ? 'in' : 'out';
+                obj.betragNum = parseFloat(obj.Betrag.replace(',', '.'));
+                return obj;
+            });
+            filteredData = [...data];
+        }
+
+        function parseDate(dateStr) {
+            const [d, m, y] = dateStr.split('.');
+            return new Date(y, m - 1, d);
+        }
+
+        function populateYears() {
+            const years = [...new Set(data.map(d => d.date.getFullYear()))].sort();
+            const container = document.getElementById('yearButtons');
+            container.innerHTML = '';
+            const allBtn = document.createElement('button');
+            allBtn.textContent = 'All Years';
+            allBtn.addEventListener('click', () => filterByYear(''));
+            container.appendChild(allBtn);
+            years.forEach(y => {
+                const btn = document.createElement('button');
+                btn.textContent = y;
+                btn.addEventListener('click', () => filterByYear(y));
+                container.appendChild(btn);
+            });
+        }
+
+        function filterByYear(year) {
+            filteredData = year ? data.filter(d => d.date.getFullYear() == year) : [...data];
+            localStorage.setItem('selectedYear', year);
+            currentPath = [];
+            localStorage.setItem('currentPath', JSON.stringify(currentPath));
+            renderCharts();
+            renderTable();
+        }
+
+        function resetDrill() {
+            currentPath = [];
+            localStorage.setItem('currentPath', JSON.stringify(currentPath));
+            renderCharts();
+            renderTable();
+        }
+
+        function renderCharts() {
+            const grouped = groupData(filteredData, currentPath.length);
+            renderCombinedChart(grouped.out, grouped.in);
+        }
+
+        function groupData(data, level) {
+            const out = {};
+            const inData = {};
+            const filtered = data.filter(d => currentPath.every((p, i) => d.categories[i] === p));
+            filtered.forEach(d => {
+                const key = `${d.date.getFullYear()}-${String(d.date.getMonth() + 1).padStart(2, '0')}`;
+                const cat = d.categories[level] || 'Other';
+                if (d.inOut === 'out') {
+                    if (!out[key]) out[key] = {};
+                    if (!out[key][cat]) out[key][cat] = 0;
+                    out[key][cat] += Math.abs(d.betragNum);
+                } else {
+                    if (!inData[key]) inData[key] = 0;
+                    inData[key] += d.betragNum;
+                }
+            });
+            return { out, in: inData };
+        }
+
+        function renderCombinedChart(outData, inData) {
+            // Build union of month labels present in outData and inData
+            const labelSet = new Set([...(Object.keys(outData || {})), ...(Object.keys(inData || {}))]);
+            const labels = Array.from(labelSet).sort();
+
+            // Collect categories from outData across all months
+            const categories = [...new Set(Object.values(outData || {}).flatMap(o => Object.keys(o || {})))];
+
+            // Build bar datasets (order 1 so bars draw below the line)
+            const barDatasets = categories.map(cat => ({
+                type: 'bar',
+                label: cat,
+                data: labels.map(l => (outData[l] && outData[l][cat]) ? outData[l][cat] : 0),
+                backgroundColor: getColor(cat),
+                stack: 'out',
+                order: 1
+            }));
+
+            // Line dataset (order 2 so it renders above bars)
+            const lineDataset = {
+                type: 'line',
+                label: 'Income',
+                data: labels.map(l => inData[l] || 0),
+                borderColor: 'green',
+                backgroundColor: 'rgba(0,128,0,0.05)',
+                fill: false,
+                tension: 0.1,
+                pointRadius: 3,
+                borderWidth: 2,
+                order: 2
+            };
+
+            const datasets = [...barDatasets, lineDataset];
+
+            // Calculate max values per label (sum of stacks for out and single value for in)
+            const sumsOut = labels.map(l => Object.values(outData[l] || {}).reduce((a, b) => a + b, 0));
+            const maxOut = sumsOut.length ? Math.max(...sumsOut) : 0;
+            const inVals = labels.map(l => inData[l] || 0);
+            const maxIn = inVals.length ? Math.max(...inVals) : 0;
+            let maxVal = Math.max(maxOut, maxIn, 0);
+            // Add small padding so line/points aren't flush to top
+            maxVal = Math.ceil(maxVal * 1.05 || 1);
+
+            if (combinedChart) combinedChart.destroy();
+            combinedChart = new Chart(document.getElementById('combinedChart'), {
+                data: { labels, datasets },
+                options: {
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true, max: maxVal }
+                    },
+                    onClick: (e, elements) => {
+                        if (elements.length && elements[0].datasetIndex < barDatasets.length) {
+                            const cat = categories[elements[0].datasetIndex];
+                            drillDown(cat);
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function drillDown(cat) {
+            currentPath.push(cat);
+            localStorage.setItem('currentPath', JSON.stringify(currentPath));
+            renderCharts();
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.querySelector('#transactionTable tbody');
+            tbody.innerHTML = '';
+            const displayData = filteredData.filter(d => d.inOut === 'out' && currentPath.every((p, i) => d.categories[i] === p));
+            displayData.forEach(d => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${d.Datum}</td>
+                    <td>${d.Name}</td>
+                    <td>${d.Verwendungszweck}</td>
+                    <td>${d.Betrag}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            addSorting();
+            addFiltering();
+        }
+
+        function addSorting() {
+            const headers = document.querySelectorAll('#transactionTable th[data-column]');
+            headers.forEach(th => {
+                th.addEventListener('click', () => {
+                    const column = th.dataset.column;
+                    const tbody = document.querySelector('#transactionTable tbody');
+                    const rows = Array.from(tbody.rows);
+                    rows.sort((a, b) => {
+                        const aVal = a.cells[Array.from(headers).indexOf(th)].textContent;
+                        const bVal = b.cells[Array.from(headers).indexOf(th)].textContent;
+                        return aVal.localeCompare(bVal);
+                    });
+                    rows.forEach(row => tbody.appendChild(row));
+                });
+            });
+        }
+
+        function addFiltering() {
+            const inputs = document.querySelectorAll('#transactionTable input');
+            inputs.forEach(input => {
+                input.addEventListener('input', () => {
+                    const tbody = document.querySelector('#transactionTable tbody');
+                    const rows = Array.from(tbody.rows);
+                    rows.forEach(row => {
+                        const cells = Array.from(row.cells);
+                        const match = cells.some(cell => cell.textContent.toLowerCase().includes(input.value.toLowerCase()));
+                        row.style.display = match ? '' : 'none';
+                    });
+                });
+            });
+        }
+
+        function getColor(cat) {
+            const colors = ['red', 'blue', 'yellow', 'green', 'purple', 'orange'];
+            return colors[cat.length % colors.length];
+        }
+    </script>
+</body>
+</html>
