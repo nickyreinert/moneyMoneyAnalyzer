@@ -16,17 +16,19 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
   });
   const categories = [...new Set(Object.values(outData||{}).flatMap(o => Object.keys(o||{})))];
   // Map data using keys (not pretty labels)
+  // convert cents -> euros for chart display (exact division)
   const barDatasets = categories.map(cat => ({
     type: 'bar', label: cat,
-    data: keys.map(k => (outData[k] && outData[k][cat]) ? outData[k][cat] : 0),
+    data: keys.map(k => (outData[k] && outData[k][cat]) ? (outData[k][cat] / 100) : 0),
     backgroundColor: get_color(cat), stack: 'out', order:1
   }));
-  const lineDataset = { type: 'line', label: 'Income', data: keys.map(k => inData[k] || 0), borderColor: 'green', backgroundColor: 'rgba(0,128,0,0.05)', fill:false, order:2 };
+  const lineDataset = { type: 'line', label: 'Income', data: keys.map(k => (inData[k] || 0) / 100), borderColor: 'green', backgroundColor: 'rgba(0,128,0,0.05)', fill:false, order:2 };
   const datasets = [...barDatasets, lineDataset];
   const sumsOut = keys.map(k => Object.values(outData[k]||{}).reduce((a,b)=>a+b,0));
   const maxOut = sumsOut.length ? Math.max(...sumsOut) : 0;
   const maxIn = keys.map(k=>inData[k]||0).reduce((a,b)=>Math.max(a,b),0);
-  let maxVal = Math.ceil(Math.max(maxOut,maxIn,1) * 1.05);
+  // maxVal in euros
+  let maxVal = Math.ceil(Math.max(maxOut, maxIn, 100) * 1.05) / 100;
   if (combined_chart) combined_chart.destroy();
   combined_chart = new Chart(document.getElementById(canvasId), {
     data: { labels, datasets },
@@ -42,7 +44,9 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
           onBarClick(cat);
         }
       },
-      plugins:{ tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${ctx.parsed.y}` }}}
+      plugins:{ tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}` }}}
     }
   });
+
+function formatNumber(v) { return (Math.round((v + Number.EPSILON) * 100) / 100).toFixed(2); }
 }

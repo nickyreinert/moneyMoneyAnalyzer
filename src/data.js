@@ -13,7 +13,9 @@ export function parse_csv(csv) {
     obj.date = parse_date(obj.Datum);
     obj.categories = obj.Kategorie ? obj.Kategorie.split(' - ') : ['Other'];
     obj.in_out = parseFloat((obj.Betrag || '0').replace(',', '.')) > 0 ? 'in' : 'out';
-    obj.betrag_num = parseFloat((obj.Betrag || '0').replace(',', '.'));
+    // store amounts as integer cents to avoid floating point accumulation
+    const parsed = Math.round(parseFloat((obj.Betrag || '0').replace(',', '.')) * 100);
+    obj.betrag_cents = Number.isNaN(parsed) ? 0 : parsed;
     return obj;
   });
   filtered_data = [...data];
@@ -34,17 +36,19 @@ export function group_data(rows, level) {
       const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
       const cat = r.categories[level] || 'Other';
       out[key] = out[key] || {};
-      out[key][cat] = (out[key][cat] || 0) + Math.abs(r.betrag_num);
+      out[key][cat] = (out[key][cat] || 0) + Math.abs(r.betrag_cents);
     }
   });
   // For income (in) always aggregate from all rows provided (year-filtered), ignore current_path
   rows.forEach(r => {
     if (r.in_out === 'in') {
       const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
-      inData[key] = (inData[key] || 0) + r.betrag_num;
+      inData[key] = (inData[key] || 0) + r.betrag_cents;
     }
   });
   return { out, in: inData };
 }
 
 export function reset_state() { current_path = []; localStorage.removeItem('currentPath'); }
+
+function round2(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }
