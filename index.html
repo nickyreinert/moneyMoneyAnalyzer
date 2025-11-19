@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Money Money Analyzer</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Money Money Analyzer</h1>
@@ -44,9 +45,15 @@
                 localStorage.setItem('csvData', csv);
                 parse_csv(csv);
                 populate_year_buttons();
+                const onBarClick = (cat) => {
+                    current_path.push(cat);
+                    localStorage.setItem('currentPath', JSON.stringify(current_path));
+                    const newGrouped = group_data(module_filtered, current_path.length);
+                    render_combined_chart(newGrouped.out, newGrouped.in, 'combinedChart', onBarClick);
+                    render_table(module_filtered, '#transactionTable tbody', current_path);
+                };
                 const grouped = group_data(module_filtered, current_path.length);
-                render_combined_chart(grouped.out, grouped.in, 'combinedChart');
-                render_table(module_filtered, '#transactionTable tbody', current_path);
+                render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
             };
             reader.readAsText(file);
         });
@@ -73,9 +80,15 @@
             const fd = year ? module_data.filter(d => d.date.getFullYear() == year) : [...module_data];
             localStorage.setItem('selectedYear', year);
             localStorage.setItem('currentPath', JSON.stringify([]));
+            const onBarClick = (cat) => {
+                current_path.push(cat);
+                localStorage.setItem('currentPath', JSON.stringify(current_path));
+                const newGrouped = group_data(fd, current_path.length);
+                render_combined_chart(newGrouped.out, newGrouped.in, 'combinedChart', onBarClick);
+                render_table(fd, '#transactionTable tbody', current_path);
+            };
             const grouped = group_data(fd, 0);
-            render_combined_chart(grouped.out, grouped.in, 'combinedChart');
-            render_table(fd, '#transactionTable tbody', current_path);
+            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
         }
 
         // Restore from localStorage

@@ -1,11 +1,10 @@
 // --- charts.js ---
-import Chart from 'https://cdn.jsdelivr.net/npm/chart.js/dist/chart.esm.js';
-
+// Chart.js loaded via UMD in index.html, available as global Chart
 let combined_chart = null;
 
 export function get_color(cat) { const colors = ['#d9534f','#5bc0de','#f0ad4e','#5cb85c','#9966cc','#ff8c00']; return colors[cat.length % colors.length]; }
 
-export function render_combined_chart(outData, inData, canvasId) {
+export function render_combined_chart(outData, inData, canvasId, onBarClick) {
   const labelSet = new Set([...(Object.keys(outData||{})), ...(Object.keys(inData||{}))]);
   const keys = Array.from(labelSet).sort();
   // pretty labels like "Nov 2025"
@@ -29,5 +28,21 @@ export function render_combined_chart(outData, inData, canvasId) {
   const maxIn = keys.map(k=>inData[k]||0).reduce((a,b)=>Math.max(a,b),0);
   let maxVal = Math.ceil(Math.max(maxOut,maxIn,1) * 1.05);
   if (combined_chart) combined_chart.destroy();
-  combined_chart = new Chart(document.getElementById(canvasId), { data: { labels, datasets }, options: { scales: { x:{stacked:true}, y:{stacked:true,beginAtZero:true,max:maxVal} }, plugins:{ tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${ctx.parsed.y}` }}} } });
+  combined_chart = new Chart(document.getElementById(canvasId), {
+    data: { labels, datasets },
+    options: {
+      scales: { x:{stacked:true}, y:{stacked:true,beginAtZero:true,max:maxVal} },
+      onClick: (evt, elements) => {
+        if (!elements || !elements.length) return;
+        const el = elements[0];
+        const dsIndex = el.datasetIndex;
+        // only handle bar dataset clicks
+        if (dsIndex < categories.length && typeof onBarClick === 'function') {
+          const cat = categories[dsIndex];
+          onBarClick(cat);
+        }
+      },
+      plugins:{ tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${ctx.parsed.y}` }}}
+    }
+  });
 }

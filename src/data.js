@@ -27,14 +27,20 @@ export function parse_date(s) {
 export function group_data(rows, level) {
   const out = {};
   const inData = {};
-  const filtered = rows.filter(r => current_path.every((p,i) => r.categories[i] === p));
-  filtered.forEach(r => {
-    const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
-    const cat = r.categories[level] || 'Other';
+  // For expenses (out) apply current_path filtering so drill-down works
+  const filteredOut = rows.filter(r => current_path.every((p, i) => r.categories[i] === p));
+  filteredOut.forEach(r => {
     if (r.in_out === 'out') {
+      const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
+      const cat = r.categories[level] || 'Other';
       out[key] = out[key] || {};
       out[key][cat] = (out[key][cat] || 0) + Math.abs(r.betrag_num);
-    } else {
+    }
+  });
+  // For income (in) always aggregate from all rows provided (year-filtered), ignore current_path
+  rows.forEach(r => {
+    if (r.in_out === 'in') {
+      const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
       inData[key] = (inData[key] || 0) + r.betrag_num;
     }
   });
