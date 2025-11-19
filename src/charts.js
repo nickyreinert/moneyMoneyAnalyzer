@@ -22,7 +22,20 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
     data: keys.map(k => (outData[k] && outData[k][cat]) ? (outData[k][cat] / 100) : 0),
     backgroundColor: get_color(cat), stack: 'out', order:1
   }));
-  const lineDataset = { type: 'line', label: 'Income', data: keys.map(k => (inData[k] || 0) / 100), borderColor: 'green', backgroundColor: 'rgba(0,128,0,0.05)', fill:false, order:2 };
+  // make the line visually dominant and ensure it renders after bars
+  const lineDataset = {
+    type: 'line',
+    label: 'Income',
+    data: keys.map(k => (inData[k] || 0) / 100),
+    borderColor: 'green',
+    backgroundColor: 'rgba(0,128,0,0.05)',
+    fill: false,
+    order: 100,
+    borderWidth: 3,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+    tension: 0.1
+  };
   const datasets = [...barDatasets, lineDataset];
   const sumsOut = keys.map(k => Object.values(outData[k]||{}).reduce((a,b)=>a+b,0));
   const maxOut = sumsOut.length ? Math.max(...sumsOut) : 0;
