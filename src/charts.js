@@ -24,7 +24,7 @@ export function get_color(cat) {
   return colors[cat.length % colors.length]; 
 }
 
-export function render_combined_chart(outData, inData, canvasId, onBarClick) {
+export function render_combined_chart(outData, inData, canvasId, onBarClick, recurringAvgData = null) {
   const labelSet = new Set([...(Object.keys(outData||{})), ...(Object.keys(inData||{}))]);
   const keys = Array.from(labelSet).sort();
   // pretty labels like "Nov 2025"
@@ -50,6 +50,7 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
     borderColor: '#2ecc71',
     backgroundColor: 'rgba(46,204,113,0.1)',
     fill: false,
+    stack: 'income', // Separate stack so it doesn't add on top of bars
     order: 1,
     borderWidth: 4,
     pointRadius: 5,
@@ -57,14 +58,44 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
     pointBackgroundColor: '#2ecc71',
     pointBorderColor: '#fff',
     pointBorderWidth: 2,
-    tension: 0.2
+    tension: 0.2,
+    yAxisID: 'y'
   };
+  
   const datasets = [...barDatasets, lineDataset];
+  
+  // Add recurring average line if data is provided
+  if (recurringAvgData) {
+    const recurringValues = keys.map(k => recurringAvgData[k] || 0);
+    console.log('Recurring Avg Data (should be in euros, e.g. 151):', recurringValues[0]);
+    const recurringAvgDataset = {
+      type: 'line',
+      label: 'Recurring Avg (Monthly)',
+      data: recurringValues,
+      borderColor: '#e74c3c',
+      backgroundColor: 'rgba(231,76,60,0.1)',
+      fill: false,
+      stack: 'recurring', // Separate stack so it doesn't add on top of bars
+      order: 2,
+      borderWidth: 3,
+      borderDash: [5, 5],
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      pointBackgroundColor: '#e74c3c',
+      pointBorderColor: '#fff',
+      pointBorderWidth: 2,
+      tension: 0.2,
+      yAxisID: 'y'
+    };
+    datasets.push(recurringAvgDataset);
+  }
   const sumsOut = keys.map(k => Object.values(outData[k]||{}).reduce((a,b)=>a+b,0));
   const maxOut = sumsOut.length ? Math.max(...sumsOut) : 0;
   const maxIn = keys.map(k=>inData[k]||0).reduce((a,b)=>Math.max(a,b),0);
+  // recurringAvgData values are already in euros, so we need to convert to cents for comparison with maxOut/maxIn
+  const maxRecurringAvg = recurringAvgData ? Math.max(...Object.values(recurringAvgData)) * 100 : 0;
   // maxVal in euros
-  let maxVal = Math.ceil(Math.max(maxOut, maxIn, 100) * 1.05) / 100;
+  let maxVal = Math.ceil(Math.max(maxOut, maxIn, maxRecurringAvg, 100) * 1.05) / 100;
   
   // Calculate stack totals in euros for each bar
   const stackTotals = keys.map(k => {
@@ -106,7 +137,10 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: { x:{stacked:true}, y:{stacked:true,beginAtZero:true,max:maxVal} },
+      scales: { 
+        x: { stacked: true }, 
+        y: { stacked: true, beginAtZero: true, max: maxVal }
+      },
       onClick: (evt, elements) => {
         if (!elements || !elements.length) return;
         const el = elements[0];

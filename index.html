@@ -68,7 +68,7 @@
     </div>
 
     <script type="module">
-        import { parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path, reset_state } from './src/data.js';
+        import { parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path, reset_state, calculate_recurring_average } from './src/data.js';
         import { render_combined_chart, render_growth_chart } from './src/charts.js';
         import { render_table, init_table_controls } from './src/table.js';
 
@@ -131,6 +131,10 @@
             const recurringPath = recurringEnabled ? current_path : null;
             const grouped = group_data(fd, effectiveLevel, recurringMatcher, recurringPath);
             
+            // Calculate recurring average (always, regardless of toggle state)
+            // The toggle only affects the chart grouping, not the average line visibility
+            const recurringAvgData = calculate_recurring_average(fd, matchesRecurringRule);
+            
             // For YoY growth, we need data from previous year too
             let growthData = fd;
             if (growthMode === 'yoy' && currentYear) {
@@ -141,7 +145,7 @@
             }
             const growthGrouped = group_data(growthData, effectiveLevel, recurringMatcher, recurringPath);
             
-            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
+            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick, recurringAvgData);
             render_growth_chart(growthGrouped.out, 'growthChart', growthMode, chartType);
             render_table(fd, '#transactionTable tbody', current_path, recurringMatcher, recurringPath);
             render_breadcrumbs();

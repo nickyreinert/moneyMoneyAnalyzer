@@ -91,6 +91,47 @@ export function group_data(rows, level, recurringMatcher = null, recurringPath =
   return { out, in: inData };
 }
 
+export function calculate_recurring_average(rows, recurringMatcher) {
+  if (!recurringMatcher) return null;
+  
+  // Filter to only recurring transactions
+  const recurringTxns = rows.filter(r => r.in_out === 'out' && recurringMatcher(r));
+  
+  console.log('Recurring transactions count:', recurringTxns.length);
+  
+  if (recurringTxns.length === 0) return null;
+  
+  // Get all months covered in the data
+  const allMonths = new Set();
+  rows.forEach(r => {
+    const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
+    allMonths.add(key);
+  });
+  
+  const monthCount = allMonths.size;
+  if (monthCount === 0) return null;
+  
+  // Calculate total of all recurring transactions across all time
+  const totalRecurring = recurringTxns.reduce((sum, r) => sum + Math.abs(r.betrag_cents), 0);
+  
+  console.log('Total recurring (cents):', totalRecurring);
+  console.log('Month count:', monthCount);
+  
+  // Calculate monthly average (in cents)
+  const monthlyAvgCents = totalRecurring / monthCount;
+  const monthlyAvgEuros = monthlyAvgCents / 100;
+  
+  console.log('Monthly average (euros):', monthlyAvgEuros);
+  
+  // Create object with monthly average for each month (convert to euros)
+  const avgData = {};
+  allMonths.forEach(month => {
+    avgData[month] = monthlyAvgEuros;
+  });
+  
+  return avgData;
+}
+
 export function reset_state() { current_path = []; localStorage.removeItem('currentPath'); }
 
 function round2(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }
