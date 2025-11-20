@@ -6,7 +6,6 @@
     <title>Money Money Analyzer</title>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 </head>
 <body>
     <div class="filters">
@@ -67,20 +66,7 @@
                 parse_csv(csv);
                 populate_year_buttons();
                 init_table_controls(() => render_all());
-                const onBarClick = (cat) => {
-                    current_path.push(cat);
-                    localStorage.setItem('currentPath', JSON.stringify(current_path));
-                    const newGrouped = group_data(module_filtered, current_path.length);
-                    render_combined_chart(newGrouped.out, newGrouped.in, 'combinedChart', onBarClick);
-                    render_growth_chart(newGrouped.out, 'growthChart');
-                    render_table(module_filtered, '#transactionTable tbody', current_path);
-                    render_breadcrumbs();
-                };
-                const grouped = group_data(module_filtered, current_path.length);
-                render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
-                render_growth_chart(grouped.out, 'growthChart');
-                render_table(module_filtered, '#transactionTable tbody', current_path);
-                render_breadcrumbs();
+                render_all();
             };
             reader.readAsText(file);
         });
@@ -125,8 +111,7 @@
                             current_path.length = level + 1;
                         }
                         localStorage.setItem('currentPath', JSON.stringify(current_path));
-                        const selectedYear = localStorage.getItem('selectedYear');
-                        filter_by_year(selectedYear || '');
+                        render_all();
                     });
                 }
             });

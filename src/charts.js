@@ -54,7 +54,10 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
     borderWidth: 3,
     pointRadius: 4,
     pointHoverRadius: 6,
-    tension: 0.1
+    tension: 0.1,
+    datalabels: {
+      display: false
+    }
   };
   const datasets = [...barDatasets, lineDataset];
   const sumsOut = keys.map(k => Object.values(outData[k]||{}).reduce((a,b)=>a+b,0));
@@ -78,19 +81,7 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
         }
       },
       plugins:{ 
-        tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}` }},
-        datalabels: {
-          display: true,
-          color: '#fff',
-          font: { weight: 'bold', size: 10 },
-          formatter: (value, context) => {
-            // Only show values for bar datasets and if value > 0
-            if (context.dataset.type === 'bar' && value > 0) {
-              return formatNumber(value);
-            }
-            return '';
-          }
-        }
+        tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}` }}
       }
     }
   });
