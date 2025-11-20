@@ -138,8 +138,15 @@
             if (storedCsv) {
                 parse_csv(storedCsv);
                 populate_year_buttons();
+                tableControlsInitialized = false;
+                const storedPath = localStorage.getItem('currentPath');
+                if (storedPath) {
+                    const pathArray = JSON.parse(storedPath);
+                    pathArray.forEach(p => current_path.push(p));
+                }
                 const selectedYear = localStorage.getItem('selectedYear');
-                if (selectedYear) filter_by_year(selectedYear);
+                currentYear = selectedYear || '';
+                render_all();
             }
         });
     </script>

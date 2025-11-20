@@ -69,6 +69,8 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
   combined_chart = new Chart(document.getElementById(canvasId), {
     data: { labels, datasets },
     options: {
+      responsive: true,
+      maintainAspectRatio: false,
       scales: { x:{stacked:true}, y:{stacked:true,beginAtZero:true,max:maxVal} },
       onClick: (evt, elements) => {
         if (!elements || !elements.length) return;
@@ -126,6 +128,8 @@ export function render_growth_chart(outData, canvasId) {
   growth_chart = new Chart(document.getElementById(canvasId), {
     data: { labels, datasets },
     options: {
+      responsive: true,
+      maintainAspectRatio: false,
       scales: {
         x: { title: { display: true, text: 'Month' } },
         y: { title: { display: true, text: 'Growth Rate (%)' }, beginAtZero: true }

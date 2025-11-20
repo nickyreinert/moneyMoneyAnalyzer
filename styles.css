@@ -8,7 +8,7 @@ input { margin: 5px; padding: 5px; }
 .breadcrumbs span:last-child { color: #333; cursor: default; }
 .breadcrumbs span:last-child:hover { text-decoration: none; }
 .chart-container { height: 62vh; display: flex; flex-direction: row; padding: 0; background: white; box-sizing: border-box; width: 100%; }
-canvas { width: 50% !important; height: 100% !important; margin: 0; box-sizing: border-box; flex-shrink: 0; }
+canvas { flex: 1; margin: 0; max-width: 50%; }
 .table-container { height: 30vh; overflow-y: auto; position: relative; }
 table { width: 100%; border-collapse: collapse; }
 thead { position: sticky; top: 0; background: #f2f2f2; z-index: 5; }
