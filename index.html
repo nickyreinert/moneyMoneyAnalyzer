@@ -38,7 +38,23 @@
     <script type="module">
         import { parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path, reset_state } from './src/data.js';
         import { render_combined_chart, render_growth_chart } from './src/charts.js';
-        import { render_table } from './src/table.js';
+        import { render_table, init_table_controls } from './src/table.js';
+
+        let currentYear = '';
+        
+        function render_all() {
+            const fd = currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : [...module_data];
+            const onBarClick = (cat) => {
+                current_path.push(cat);
+                localStorage.setItem('currentPath', JSON.stringify(current_path));
+                render_all();
+            };
+            const grouped = group_data(fd, current_path.length);
+            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
+            render_growth_chart(grouped.out, 'growthChart');
+            render_table(fd, '#transactionTable tbody', current_path);
+            render_breadcrumbs();
+        }
 
         // Wire up UI
         document.getElementById('loadBtn').addEventListener('click', () => {
@@ -50,6 +66,7 @@
                 localStorage.setItem('csvData', csv);
                 parse_csv(csv);
                 populate_year_buttons();
+                init_table_controls(() => render_all());
                 const onBarClick = (cat) => {
                     current_path.push(cat);
                     localStorage.setItem('currentPath', JSON.stringify(current_path));
@@ -116,24 +133,11 @@
         }
 
         function filter_by_year(year) {
-            const fd = year ? module_data.filter(d => d.date.getFullYear() == year) : [...module_data];
+            currentYear = year;
             localStorage.setItem('selectedYear', year);
             current_path.length = 0;
             localStorage.setItem('currentPath', JSON.stringify([]));
-            const onBarClick = (cat) => {
-                current_path.push(cat);
-                localStorage.setItem('currentPath', JSON.stringify(current_path));
-                const newGrouped = group_data(fd, current_path.length);
-                render_combined_chart(newGrouped.out, newGrouped.in, 'combinedChart', onBarClick);
-                render_growth_chart(newGrouped.out, 'growthChart');
-                render_table(fd, '#transactionTable tbody', current_path);
-                render_breadcrumbs();
-            };
-            const grouped = group_data(fd, 0);
-            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
-            render_growth_chart(grouped.out, 'growthChart');
-            render_table(module_filtered, '#transactionTable tbody', current_path);
-            render_breadcrumbs();
+            render_all();
         }
 
         // Restore from localStorage
