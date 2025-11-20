@@ -65,6 +65,41 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
   const maxIn = keys.map(k=>inData[k]||0).reduce((a,b)=>Math.max(a,b),0);
   // maxVal in euros
   let maxVal = Math.ceil(Math.max(maxOut, maxIn, 100) * 1.05) / 100;
+  
+  // Calculate stack totals in euros for each bar
+  const stackTotals = keys.map(k => {
+    const total = Object.values(outData[k] || {}).reduce((a, b) => a + b, 0);
+    return total / 100; // Convert cents to euros
+  });
+  
+  // Custom plugin to draw sum labels on top of stacked bars
+  const stackSumPlugin = {
+    id: 'stackSumLabels',
+    afterDatasetsDraw(chart) {
+      const { ctx, chartArea: { top }, scales: { x, y } } = chart;
+      ctx.save();
+      
+      // Draw sum for each bar
+      stackTotals.forEach((total, index) => {
+        if (total === 0) return; // Skip if no data
+        
+        const xPos = x.getPixelForValue(index);
+        const yPos = y.getPixelForValue(total);
+        
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 12px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        
+        // Format number with 2 decimals
+        const label = total.toFixed(2);
+        ctx.fillText(label, xPos, yPos - 5);
+      });
+      
+      ctx.restore();
+    }
+  };
+  
   if (combined_chart) combined_chart.destroy();
   combined_chart = new Chart(document.getElementById(canvasId), {
     data: { labels, datasets },
@@ -87,7 +122,8 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
       plugins:{ 
         tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}` }}
       }
-    }
+    },
+    plugins: [stackSumPlugin]
   });
 
 function formatNumber(v) { return (Math.round((v + Number.EPSILON) * 100) / 100).toFixed(2); }
