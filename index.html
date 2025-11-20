@@ -118,6 +118,7 @@
         function filter_by_year(year) {
             const fd = year ? module_data.filter(d => d.date.getFullYear() == year) : [...module_data];
             localStorage.setItem('selectedYear', year);
+            current_path.length = 0;
             localStorage.setItem('currentPath', JSON.stringify([]));
             const onBarClick = (cat) => {
                 current_path.push(cat);
@@ -126,6 +127,7 @@
                 render_combined_chart(newGrouped.out, newGrouped.in, 'combinedChart', onBarClick);
                 render_growth_chart(newGrouped.out, 'growthChart');
                 render_table(fd, '#transactionTable tbody', current_path);
+                render_breadcrumbs();
             };
             const grouped = group_data(fd, 0);
             render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
