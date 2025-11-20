@@ -95,7 +95,7 @@ function formatNumber(v) { return (Math.round((v + Number.EPSILON) * 100) / 100)
 
 let growth_chart = null;
 
-export function render_growth_chart(outData, canvasId, mode = 'mom') {
+export function render_growth_chart(outData, canvasId, mode = 'mom', chartType = 'line') {
   const keys = Object.keys(outData || {}).sort();
   const labels = keys.map(k => {
     const [y, m] = k.split('-').map(Number);
@@ -120,14 +120,14 @@ export function render_growth_chart(outData, canvasId, mode = 'mom') {
       }
     });
     return {
-      type: 'line',
+      type: chartType,
       label: cat,
       data: growthRates,
-      borderColor: get_color(cat),
-      backgroundColor: 'transparent',
+      borderColor: chartType === 'line' ? get_color(cat) : undefined,
+      backgroundColor: chartType === 'bar' ? get_color(cat) : 'transparent',
       fill: false,
       tension: 0.1,
-      borderWidth: 2
+      borderWidth: chartType === 'line' ? 2 : 1
     };
   });
 
@@ -138,10 +138,14 @@ export function render_growth_chart(outData, canvasId, mode = 'mom') {
       responsive: true,
       maintainAspectRatio: false,
       scales: {
-        x: { title: { display: true, text: 'Month' } },
+        x: { 
+          title: { display: true, text: 'Month' },
+          stacked: false
+        },
         y: { 
           title: { display: true, text: 'Growth Rate (%)' },
-          beginAtZero: false
+          beginAtZero: false,
+          stacked: false
         }
       },
       plugins: {
