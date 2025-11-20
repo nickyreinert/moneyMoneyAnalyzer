@@ -11,6 +11,7 @@
     <div class="filters">
         <h1 style="margin-right: 20px; font-size: 1.2em;">MoneyMoney Analyzer</h1>
         <input type="file" id="csvFile" accept=".csv">
+        <button id="loadSampleBtn">Load Sample Data</button>
         <div id="yearButtons"></div>
         <button id="resetDrillBtn">Reset Drill</button>
         <span style="margin-left: 20px;">Growth Rate:</span>
@@ -81,6 +82,16 @@
         }
 
         // Wire up UI
+        function jsonToCsv(jsonData) {
+            const headers = Object.keys(jsonData[0]);
+            const csvRows = [headers.join(';')];
+            jsonData.forEach(row => {
+                const values = headers.map(h => row[h] || '');
+                csvRows.push(values.join(';'));
+            });
+            return csvRows.join('\n');
+        }
+        
         function loadCsvFile(file) {
             if (!file) return;
             const reader = new FileReader();
@@ -97,6 +108,22 @@
         
         document.getElementById('csvFile').addEventListener('change', (e) => {
             loadCsvFile(e.target.files[0]);
+        });
+        
+        document.getElementById('loadSampleBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('./sample_data.json');
+                const jsonData = await response.json();
+                const csvData = jsonToCsv(jsonData);
+                localStorage.setItem('csvData', csvData);
+                parse_csv(csvData);
+                populate_year_buttons();
+                tableControlsInitialized = false;
+                render_all();
+            } catch (error) {
+                console.error('Error loading sample data:', error);
+                alert('Failed to load sample data');
+            }
         });
 
         document.getElementById('resetDrillBtn').addEventListener('click', () => { reset_state(); location.reload(); });

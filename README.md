@@ -1,4 +1,4 @@
-# Money Money Analyzer
+# MoneyMoney Analyzer
 
 Simple browser app to analyze CSV export from bank (DKB).
 

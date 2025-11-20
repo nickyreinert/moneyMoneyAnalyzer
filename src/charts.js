@@ -97,7 +97,21 @@ let growth_chart = null;
 
 export function render_growth_chart(outData, canvasId, mode = 'mom', chartType = 'line') {
   const keys = Object.keys(outData || {}).sort();
-  const labels = keys.map(k => {
+  
+  // For YoY mode, filter to show only the most recent year on X-axis
+  let displayKeys = keys;
+  if (mode === 'yoy' && keys.length > 0) {
+    // Get the year of the last key (most recent)
+    const lastKey = keys[keys.length - 1];
+    const [lastYear] = lastKey.split('-').map(Number);
+    // Only show keys from the current (most recent) year
+    displayKeys = keys.filter(k => {
+      const [y] = k.split('-').map(Number);
+      return y === lastYear;
+    });
+  }
+  
+  const labels = displayKeys.map(k => {
     const [y, m] = k.split('-').map(Number);
     try {
       return new Date(y, m-1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
@@ -119,10 +133,19 @@ export function render_growth_chart(outData, canvasId, mode = 'mom', chartType =
         return ((v - values[i-12]) / values[i-12]) * 100;
       }
     });
+    
+    // For display, only use growth rates for the display keys
+    const displayGrowthRates = mode === 'yoy' 
+      ? displayKeys.map(dk => {
+          const idx = keys.indexOf(dk);
+          return idx >= 0 ? growthRates[idx] : 0;
+        })
+      : growthRates;
+    
     return {
       type: chartType,
       label: cat,
-      data: growthRates,
+      data: displayGrowthRates,
       borderColor: chartType === 'line' ? get_color(cat) : undefined,
       backgroundColor: chartType === 'bar' ? get_color(cat) : 'transparent',
       fill: false,
