@@ -2,7 +2,27 @@
 // Chart.js loaded via UMD in index.html, available as global Chart
 let combined_chart = null;
 
-export function get_color(cat) { const colors = ['#d9534f','#5bc0de','#f0ad4e','#5cb85c','#9966cc','#ff8c00']; return colors[cat.length % colors.length]; }
+export function get_color(cat) { 
+  const colors = [
+    '#e74c3c', // red
+    '#3498db', // blue
+    '#f39c12', // orange
+    '#2ecc71', // green
+    '#9b59b6', // purple
+    '#1abc9c', // turquoise
+    '#e67e22', // dark orange
+    '#34495e', // dark blue-gray
+    '#f1c40f', // yellow
+    '#16a085', // dark turquoise
+    '#c0392b', // dark red
+    '#d35400', // burnt orange
+    '#8e44ad', // dark purple
+    '#27ae60', // dark green
+    '#2980b9', // darker blue
+    '#95a5a6'  // gray
+  ]; 
+  return colors[cat.length % colors.length]; 
+}
 
 export function render_combined_chart(outData, inData, canvasId, onBarClick) {
   const labelSet = new Set([...(Object.keys(outData||{})), ...(Object.keys(inData||{}))]);
