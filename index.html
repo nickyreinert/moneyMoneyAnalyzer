@@ -40,6 +40,7 @@
         import { render_table, init_table_controls } from './src/table.js';
 
         let currentYear = '';
+        let tableControlsInitialized = false;
         
         function render_all() {
             const fd = currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : [...module_data];
@@ -53,6 +54,12 @@
             render_growth_chart(grouped.out, 'growthChart');
             render_table(fd, '#transactionTable tbody', current_path);
             render_breadcrumbs();
+            
+            // Initialize table controls after first render
+            if (!tableControlsInitialized) {
+                init_table_controls(() => render_all());
+                tableControlsInitialized = true;
+            }
         }
 
         // Wire up UI
@@ -65,7 +72,7 @@
                 localStorage.setItem('csvData', csv);
                 parse_csv(csv);
                 populate_year_buttons();
-                init_table_controls(() => render_all());
+                tableControlsInitialized = false;
                 render_all();
             };
             reader.readAsText(file);

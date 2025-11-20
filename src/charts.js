@@ -74,10 +74,12 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
         if (!elements || !elements.length) return;
         const el = elements[0];
         const dsIndex = el.datasetIndex;
-        // only handle bar dataset clicks
+        // only handle bar dataset clicks, and don't allow drilling into "Other"
         if (dsIndex < categories.length && typeof onBarClick === 'function') {
           const cat = categories[dsIndex];
-          onBarClick(cat);
+          if (cat !== 'Other') {
+            onBarClick(cat);
+          }
         }
       },
       plugins:{ 

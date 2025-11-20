@@ -1,16 +1,15 @@
 // --- table.js ---
 let sortState = { column: null, ascending: true };
+let filterState = {};
 
 export function render_table(rows, tbodySelector, current_path) {
   const tbody = document.querySelector(tbodySelector);
   tbody.innerHTML = '';
   let display = rows.filter(r => r.in_out === 'out' && current_path.every((p,i) => r.categories[i] === p));
   
-  // Apply column filters
-  const filterInputs = document.querySelectorAll('th input');
-  filterInputs.forEach(input => {
-    const column = input.closest('th').getAttribute('data-column');
-    const filterValue = input.value.toLowerCase().trim();
+  // Apply column filters from saved state
+  Object.keys(filterState).forEach(column => {
+    const filterValue = filterState[column].toLowerCase().trim();
     if (filterValue) {
       display = display.filter(r => {
         let cellValue = '';
@@ -74,8 +73,14 @@ export function init_table_controls(renderCallback) {
   
   // Add filtering to inputs
   document.querySelectorAll('th input').forEach(input => {
+    const column = input.closest('th').getAttribute('data-column');
+    // Restore saved filter value
+    if (filterState[column]) {
+      input.value = filterState[column];
+    }
     input.addEventListener('input', (e) => {
       e.stopPropagation();
+      filterState[column] = input.value;
       renderCallback();
     });
     input.addEventListener('click', (e) => {
