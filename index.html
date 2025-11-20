@@ -15,6 +15,7 @@
         <div id="yearButtons"></div>
         <button id="resetDrillBtn">Reset Drill</button>
     </div>
+    <div class="breadcrumbs" id="breadcrumbs"></div>
     <div class="chart-container">
         <canvas id="combinedChart"></canvas>
         <canvas id="growthChart"></canvas>
@@ -55,11 +56,13 @@
                     render_combined_chart(newGrouped.out, newGrouped.in, 'combinedChart', onBarClick);
                     render_growth_chart(newGrouped.out, 'growthChart');
                     render_table(module_filtered, '#transactionTable tbody', current_path);
+                    render_breadcrumbs();
                 };
                 const grouped = group_data(module_filtered, current_path.length);
                 render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
                 render_growth_chart(grouped.out, 'growthChart');
                 render_table(module_filtered, '#transactionTable tbody', current_path);
+                render_breadcrumbs();
             };
             reader.readAsText(file);
         });
@@ -82,6 +85,35 @@
             });
         }
 
+        function render_breadcrumbs() {
+            const breadcrumbsEl = document.getElementById('breadcrumbs');
+            if (current_path.length === 0) {
+                breadcrumbsEl.innerHTML = '<span style="color: #999;">All Categories</span>';
+                return;
+            }
+            let html = '<span data-level="-1">All Categories</span>';
+            current_path.forEach((cat, idx) => {
+                html += ' > <span data-level="' + idx + '">' + cat + '</span>';
+            });
+            breadcrumbsEl.innerHTML = html;
+            
+            breadcrumbsEl.querySelectorAll('span[data-level]').forEach(span => {
+                const level = parseInt(span.getAttribute('data-level'));
+                if (level < current_path.length - 1) {
+                    span.addEventListener('click', () => {
+                        if (level === -1) {
+                            current_path.length = 0;
+                        } else {
+                            current_path.length = level + 1;
+                        }
+                        localStorage.setItem('currentPath', JSON.stringify(current_path));
+                        const selectedYear = localStorage.getItem('selectedYear');
+                        filter_by_year(selectedYear || '');
+                    });
+                }
+            });
+        }
+
         function filter_by_year(year) {
             const fd = year ? module_data.filter(d => d.date.getFullYear() == year) : [...module_data];
             localStorage.setItem('selectedYear', year);
@@ -97,7 +129,8 @@
             const grouped = group_data(fd, 0);
             render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
             render_growth_chart(grouped.out, 'growthChart');
-            render_table(fd, '#transactionTable tbody', current_path);
+            render_table(module_filtered, '#transactionTable tbody', current_path);
+            render_breadcrumbs();
         }
 
         // Restore from localStorage
