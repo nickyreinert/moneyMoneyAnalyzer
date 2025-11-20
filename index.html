@@ -13,6 +13,9 @@
         <input type="file" id="csvFile" accept=".csv">
         <div id="yearButtons"></div>
         <button id="resetDrillBtn">Reset Drill</button>
+        <span style="margin-left: 20px;">Growth Rate:</span>
+        <label><input type="radio" name="growthMode" value="mom" checked> MoM</label>
+        <label><input type="radio" name="growthMode" value="yoy"> YoY</label>
     </div>
     <div class="breadcrumbs" id="breadcrumbs"></div>
     <div class="chart-container">
@@ -40,6 +43,7 @@
 
         let currentYear = '';
         let tableControlsInitialized = false;
+        let growthMode = 'mom';
         
         function render_all() {
             const fd = currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : [...module_data];
@@ -49,8 +53,19 @@
                 render_all();
             };
             const grouped = group_data(fd, current_path.length);
+            
+            // For YoY growth, we need data from previous year too
+            let growthData = fd;
+            if (growthMode === 'yoy' && currentYear) {
+                const prevYear = parseInt(currentYear) - 1;
+                growthData = module_data.filter(d => 
+                    d.date.getFullYear() == currentYear || d.date.getFullYear() == prevYear
+                );
+            }
+            const growthGrouped = group_data(growthData, current_path.length);
+            
             render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
-            render_growth_chart(grouped.out, 'growthChart');
+            render_growth_chart(growthGrouped.out, 'growthChart', growthMode);
             render_table(fd, '#transactionTable tbody', current_path);
             render_breadcrumbs();
             
@@ -81,6 +96,15 @@
         });
 
         document.getElementById('resetDrillBtn').addEventListener('click', () => { reset_state(); location.reload(); });
+        
+        document.querySelectorAll('input[name="growthMode"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                growthMode = e.target.value;
+                if (module_data.length > 0) {
+                    render_all();
+                }
+            });
+        });
 
         function populate_year_buttons() {
             const years = [...new Set(module_data.map(d => d.date.getFullYear()))].sort();

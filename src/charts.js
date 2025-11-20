@@ -95,7 +95,7 @@ function formatNumber(v) { return (Math.round((v + Number.EPSILON) * 100) / 100)
 
 let growth_chart = null;
 
-export function render_growth_chart(outData, canvasId) {
+export function render_growth_chart(outData, canvasId, mode = 'mom') {
   const keys = Object.keys(outData || {}).sort();
   const labels = keys.map(k => {
     const [y, m] = k.split('-').map(Number);
@@ -105,12 +105,19 @@ export function render_growth_chart(outData, canvasId) {
   });
   const categories = [...new Set(Object.values(outData||{}).flatMap(o => Object.keys(o||{})))];
   
-  // Calculate growth rates (month-over-month % change)
+  // Calculate growth rates based on mode
   const datasets = categories.map(cat => {
     const values = keys.map(k => (outData[k] && outData[k][cat]) ? outData[k][cat] : 0);
     const growthRates = values.map((v, i) => {
-      if (i === 0 || values[i-1] === 0) return 0;
-      return ((v - values[i-1]) / values[i-1]) * 100;
+      if (mode === 'mom') {
+        // Month-over-Month
+        if (i === 0 || values[i-1] === 0) return 0;
+        return ((v - values[i-1]) / values[i-1]) * 100;
+      } else {
+        // Year-over-Year
+        if (i < 12 || values[i-12] === 0) return 0;
+        return ((v - values[i-12]) / values[i-12]) * 100;
+      }
     });
     return {
       type: 'line',
@@ -132,10 +139,13 @@ export function render_growth_chart(outData, canvasId) {
       maintainAspectRatio: false,
       scales: {
         x: { title: { display: true, text: 'Month' } },
-        y: { title: { display: true, text: 'Growth Rate (%)' }, beginAtZero: true }
+        y: { 
+          title: { display: true, text: 'Growth Rate (%)' },
+          beginAtZero: false
+        }
       },
       plugins: {
-        title: { display: true, text: 'Category Growth Rates (%)' },
+        title: { display: true, text: mode === 'mom' ? 'Month-over-Month Growth (%)' : 'Year-over-Year Growth (%)' },
         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` } }
       }
     }
