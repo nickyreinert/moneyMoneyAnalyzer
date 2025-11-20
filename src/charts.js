@@ -63,3 +63,50 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
 
 function formatNumber(v) { return (Math.round((v + Number.EPSILON) * 100) / 100).toFixed(2); }
 }
+
+let growth_chart = null;
+
+export function render_growth_chart(outData, canvasId) {
+  const keys = Object.keys(outData || {}).sort();
+  const labels = keys.map(k => {
+    const [y, m] = k.split('-').map(Number);
+    try {
+      return new Date(y, m-1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
+    } catch (e) { return k; }
+  });
+  const categories = [...new Set(Object.values(outData||{}).flatMap(o => Object.keys(o||{})))];
+  
+  // Calculate growth rates (month-over-month % change)
+  const datasets = categories.map(cat => {
+    const values = keys.map(k => (outData[k] && outData[k][cat]) ? outData[k][cat] : 0);
+    const growthRates = values.map((v, i) => {
+      if (i === 0 || values[i-1] === 0) return 0;
+      return ((v - values[i-1]) / values[i-1]) * 100;
+    });
+    return {
+      type: 'line',
+      label: cat,
+      data: growthRates,
+      borderColor: get_color(cat),
+      backgroundColor: 'transparent',
+      fill: false,
+      tension: 0.1,
+      borderWidth: 2
+    };
+  });
+
+  if (growth_chart) growth_chart.destroy();
+  growth_chart = new Chart(document.getElementById(canvasId), {
+    data: { labels, datasets },
+    options: {
+      scales: {
+        x: { title: { display: true, text: 'Month' } },
+        y: { title: { display: true, text: 'Growth Rate (%)' }, beginAtZero: true }
+      },
+      plugins: {
+        title: { display: true, text: 'Category Growth Rates (%)' },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` } }
+      }
+    }
+  });
+}

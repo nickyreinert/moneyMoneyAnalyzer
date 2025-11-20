@@ -8,8 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <h1>Money Money Analyzer</h1>
     <div class="filters">
+        <h1 style="margin-right: 20px; font-size: 1.2em;">Money Money Analyzer</h1>
         <input type="file" id="csvFile" accept=".csv">
         <button id="loadBtn">Load CSV</button>
         <div id="yearButtons"></div>
@@ -17,22 +17,25 @@
     </div>
     <div class="chart-container">
         <canvas id="combinedChart"></canvas>
+        <canvas id="growthChart"></canvas>
     </div>
-    <table id="transactionTable">
-        <thead>
-            <tr>
-                <th data-column="date">Date <input type="text" placeholder="Filter Date"></th>
-                <th data-column="name">Name <input type="text" placeholder="Filter Name"></th>
-                <th data-column="verwendungszweck">Verwendungszweck <input type="text" placeholder="Filter Verwendungszweck"></th>
-                <th data-column="betrag">Betrag <input type="text" placeholder="Filter Betrag"></th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <div class="table-container">
+        <table id="transactionTable">
+            <thead>
+                <tr>
+                    <th data-column="date">Date <input type="text" placeholder="Filter Date"></th>
+                    <th data-column="name">Name <input type="text" placeholder="Filter Name"></th>
+                    <th data-column="verwendungszweck">Verwendungszweck <input type="text" placeholder="Filter Verwendungszweck"></th>
+                    <th data-column="betrag">Betrag <input type="text" placeholder="Filter Betrag"></th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 
     <script type="module">
         import { parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path, reset_state } from './src/data.js';
-        import { render_combined_chart } from './src/charts.js';
+        import { render_combined_chart, render_growth_chart } from './src/charts.js';
         import { render_table } from './src/table.js';
 
         // Wire up UI
@@ -50,10 +53,13 @@
                     localStorage.setItem('currentPath', JSON.stringify(current_path));
                     const newGrouped = group_data(module_filtered, current_path.length);
                     render_combined_chart(newGrouped.out, newGrouped.in, 'combinedChart', onBarClick);
+                    render_growth_chart(newGrouped.out, 'growthChart');
                     render_table(module_filtered, '#transactionTable tbody', current_path);
                 };
                 const grouped = group_data(module_filtered, current_path.length);
                 render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
+                render_growth_chart(grouped.out, 'growthChart');
+                render_table(module_filtered, '#transactionTable tbody', current_path);
             };
             reader.readAsText(file);
         });
@@ -85,10 +91,13 @@
                 localStorage.setItem('currentPath', JSON.stringify(current_path));
                 const newGrouped = group_data(fd, current_path.length);
                 render_combined_chart(newGrouped.out, newGrouped.in, 'combinedChart', onBarClick);
+                render_growth_chart(newGrouped.out, 'growthChart');
                 render_table(fd, '#transactionTable tbody', current_path);
             };
             const grouped = group_data(fd, 0);
             render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick);
+            render_growth_chart(grouped.out, 'growthChart');
+            render_table(fd, '#transactionTable tbody', current_path);
         }
 
         // Restore from localStorage
