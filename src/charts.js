@@ -77,7 +77,21 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick) {
           onBarClick(cat);
         }
       },
-      plugins:{ tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}` }}}
+      plugins:{ 
+        tooltip:{ callbacks:{ label:(ctx)=>`${ctx.dataset.label}: ${formatNumber(ctx.parsed.y)}` }},
+        datalabels: {
+          display: true,
+          color: '#fff',
+          font: { weight: 'bold', size: 10 },
+          formatter: (value, context) => {
+            // Only show values for bar datasets and if value > 0
+            if (context.dataset.type === 'bar' && value > 0) {
+              return formatNumber(value);
+            }
+            return '';
+          }
+        }
+      }
     }
   });
 
