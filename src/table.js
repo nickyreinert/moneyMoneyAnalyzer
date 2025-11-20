@@ -2,10 +2,34 @@
 let sortState = { column: null, ascending: true };
 let filterState = {};
 
-export function render_table(rows, tbodySelector, current_path) {
+export function render_table(rows, tbodySelector, current_path, recurringMatcher = null, recurringPath = null) {
   const tbody = document.querySelector(tbodySelector);
   tbody.innerHTML = '';
-  let display = rows.filter(r => r.in_out === 'out' && current_path.every((p,i) => r.categories[i] === p));
+  
+  // Filter transactions based on mode
+  let display = rows.filter(r => r.in_out === 'out');
+  
+  // Handle recurring mode filtering
+  if (recurringPath && recurringPath.length >= 1) {
+    const isRecurringPath = recurringPath[0] === 'Recurring / Base Costs';
+    const isOtherPath = recurringPath[0] === 'Other Expenses';
+    
+    // Filter by recurring/non-recurring
+    if (isRecurringPath) {
+      display = display.filter(r => recurringMatcher && recurringMatcher(r));
+    } else if (isOtherPath) {
+      display = display.filter(r => !recurringMatcher || !recurringMatcher(r));
+    }
+    
+    // Apply category filtering if drilled deeper
+    if (recurringPath.length > 1) {
+      const actualPath = recurringPath.slice(1);
+      display = display.filter(r => actualPath.every((p, i) => r.categories[i] === p));
+    }
+  } else if (current_path.length > 0) {
+    // Normal mode: filter by category path
+    display = display.filter(r => current_path.every((p, i) => r.categories[i] === p));
+  }
   
   // Apply column filters from saved state
   Object.keys(filterState).forEach(column => {
