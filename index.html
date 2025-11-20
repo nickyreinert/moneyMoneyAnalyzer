@@ -63,8 +63,7 @@
         }
 
         // Wire up UI
-        document.getElementById('loadBtn').addEventListener('click', () => {
-            const file = document.getElementById('csvFile').files[0];
+        function loadCsvFile(file) {
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -76,6 +75,15 @@
                 render_all();
             };
             reader.readAsText(file);
+        }
+        
+        document.getElementById('csvFile').addEventListener('change', (e) => {
+            loadCsvFile(e.target.files[0]);
+        });
+        
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            const file = document.getElementById('csvFile').files[0];
+            loadCsvFile(file);
         });
 
         document.getElementById('resetDrillBtn').addEventListener('click', () => { reset_state(); location.reload(); });
