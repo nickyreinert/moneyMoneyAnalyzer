@@ -74,8 +74,12 @@ export function init_table_controls(renderCallback) {
   
   // Add filtering to inputs
   document.querySelectorAll('th input').forEach(input => {
-    input.addEventListener('input', () => {
+    input.addEventListener('input', (e) => {
+      e.stopPropagation();
       renderCallback();
+    });
+    input.addEventListener('click', (e) => {
+      e.stopPropagation();
     });
   });
 }
