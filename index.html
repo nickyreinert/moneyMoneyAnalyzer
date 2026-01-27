@@ -28,6 +28,7 @@
     <div class="chart-container">
         <canvas id="combinedChart"></canvas>
         <canvas id="growthChart"></canvas>
+        <canvas id="averageChart"></canvas>
     </div>
     <div class="table-container">
         <table id="transactionTable">
@@ -68,8 +69,8 @@
     </div>
 
     <script type="module">
-        import { parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path, reset_state, calculate_recurring_average } from './src/data.js';
-        import { render_combined_chart, render_growth_chart } from './src/charts.js';
+        import { parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path, reset_state, calculate_recurring_average, calculate_monthly_averages } from './src/data.js';
+        import { render_combined_chart, render_growth_chart, render_averages_chart } from './src/charts.js';
         import { render_table, init_table_controls } from './src/table.js';
 
         let currentYear = '';
@@ -147,6 +148,15 @@
             
             render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick, recurringAvgData);
             render_growth_chart(growthGrouped.out, 'growthChart', growthMode, chartType);
+
+            // Calculate and Render Averages (using full dataset for context, respecting drill-down)
+            let avgRows = module_data;
+            if (current_path.length > 0) {
+                 avgRows = avgRows.filter(r => current_path.every((p, i) => r.categories && r.categories[i] === p));
+            }
+            const avgData = calculate_monthly_averages(avgRows);
+            render_averages_chart(avgData, 'averageChart');
+
             render_table(fd, '#transactionTable tbody', current_path, recurringMatcher, recurringPath);
             render_breadcrumbs();
             

@@ -91,6 +91,55 @@ export function group_data(rows, level, recurringMatcher = null, recurringPath =
   return { out, in: inData };
 }
 
+export function calculate_monthly_averages(rows) {
+  const monthStats = Array(12).fill(0).map(() => ({ in: 0, out: 0 }));
+  let totalIn = 0;
+  let totalOut = 0;
+  
+  // Calculate date range to determine divisor for each month
+  if (rows.length === 0) return { monthlyAverages: [], globalAverage: { in: 0, out: 0 } };
+
+  // Sort by date to find min/max
+  const sorted = [...rows].sort((a,b) => a.date - b.date);
+  const minDate = sorted[0].date;
+  const maxDate = sorted[sorted.length - 1].date;
+  
+  // Count how many times each month index actually occurred in the timespan
+  const monthCounts = Array(12).fill(0);
+  let curr = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+  const end = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
+  
+  let totalMonths = 0;
+  while (curr <= end) {
+    monthCounts[curr.getMonth()]++;
+    totalMonths++;
+    curr.setMonth(curr.getMonth() + 1);
+  }
+
+  rows.forEach(r => {
+    const m = r.date.getMonth();
+    if (r.in_out === 'in') {
+      monthStats[m].in += r.betrag_cents;
+      totalIn += r.betrag_cents;
+    } else {
+      monthStats[m].out += Math.abs(r.betrag_cents);
+      totalOut += Math.abs(r.betrag_cents);
+    }
+  });
+
+  const monthlyAverages = monthStats.map((stat, idx) => ({
+    in: monthCounts[idx] ? (stat.in / monthCounts[idx]) : 0,
+    out: monthCounts[idx] ? (stat.out / monthCounts[idx]) : 0
+  }));
+
+  const globalAverage = {
+    in: totalMonths ? (totalIn / totalMonths) : 0,
+    out: totalMonths ? (totalOut / totalMonths) : 0
+  };
+
+  return { monthlyAverages, globalAverage };
+}
+
 export function calculate_recurring_average(rows, recurringMatcher) {
   if (!recurringMatcher) return null;
   

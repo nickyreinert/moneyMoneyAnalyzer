@@ -159,8 +159,106 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
     },
     plugins: [stackSumPlugin]
   });
+}
 
 function formatNumber(v) { return (Math.round((v + Number.EPSILON) * 100) / 100).toFixed(2); }
+
+let averages_chart = null;
+
+export function render_averages_chart(avgData, canvasId) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    const labels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    
+    // avgData.monthlyAverages: array of {in, out} in cents
+    // avgData.globalAverage: {in, out} in cents
+    
+    const monthlyIn = avgData.monthlyAverages.map(d => d.in / 100);
+    const monthlyOut = avgData.monthlyAverages.map(d => d.out / 100);
+    const globalIn = avgData.globalAverage.in / 100;
+    const globalOut = avgData.globalAverage.out / 100;
+
+    const datasets = [
+        {
+            type: 'bar',
+            label: 'Avg Income',
+            data: monthlyIn,
+            backgroundColor: 'rgba(46,204,113,0.7)', // Green
+            order: 2,
+            stack: 'income_stack' 
+        },
+        {
+            type: 'bar',
+            label: 'Avg Outgoing',
+            data: monthlyOut,
+            backgroundColor: 'rgba(231,76,60,0.7)', // Red
+            order: 3,
+            stack: 'expenses_stack'
+        },
+        {
+            type: 'line',
+            label: 'Total Avg Income',
+            data: Array(12).fill(globalIn),
+            borderColor: '#2ecc71',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false,
+            order: 0
+        },
+        {
+            type: 'line',
+            label: 'Total Avg Outgoing',
+            data: Array(12).fill(globalOut),
+            borderColor: '#e74c3c',
+            borderWidth: 2,
+            borderDash: [5, 5],
+            pointRadius: 0,
+            fill: false,
+            order: 1
+        }
+    ];
+
+    if (averages_chart) averages_chart.destroy();
+
+    averages_chart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: v => v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) }
+                }
+            },
+             plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: (ctx) => {
+                             let label = ctx.dataset.label || '';
+                             if (label) label += ': ';
+                             if (ctx.parsed.y !== null) {
+                                  label += (ctx.parsed.y).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+                             }
+                             return label;
+                        }
+                    }
+                },
+                title: {
+                    display: true,
+                    text: 'Average Monthly Metrics'
+                },
+                 legend: {
+                    position: 'top',
+                }
+            }
+        }
+    });
 }
 
 let growth_chart = null;
