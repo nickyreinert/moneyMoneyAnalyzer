@@ -10,8 +10,38 @@ input { margin: 5px; padding: 5px; }
 .breadcrumbs span:last-child { color: #333; cursor: default; }
 .breadcrumbs span:last-child:hover { text-decoration: none; }
 .chart-container { height: 40vh; display: flex; flex-direction: row; padding: 0; background: white; box-sizing: border-box; width: 100%; }
-canvas { flex: 1; margin: 0; max-width: 33.333%; }
+.chart-wrapper { flex: 1; position: relative; max-width: 33.333%; height: 100%; box-sizing: border-box; padding: 5px; }
+canvas { width: 100% !important; height: 100% !important; }
+.enlarge-btn { position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(255,255,255,0.7); border: 1px solid #ccc; cursor: pointer; border-radius: 4px; font-size: 1.2em; padding: 0 5px; }
+.enlarge-btn:hover { background: white; box-shadow: 0 0 3px rgba(0,0,0,0.2); }
+
 .table-container { height: 52vh; overflow-y: auto; position: relative; }
+
+/* Chart Modal Specifics */
+.modal-content.chart-modal-content { width: 90%; height: 90vh; max-width: none; margin: 2.5vh auto; display: flex; flex-direction: column; }
+.chart-modal-body { flex: 1; padding: 10px; overflow: hidden; position: relative; }
+#modalChartContainer { width: 100%; height: 100%; }
+
+@media (max-width: 768px) {
+    body {
+        height: auto;
+        overflow-y: auto;
+    }
+    .chart-container {
+        flex-direction: column;
+        height: auto;
+    }
+    .chart-wrapper {
+        max-width: 100%;
+        height: 300px; /* Force fixed height for each chart block */
+        margin-bottom: 20px;
+        border-right: none;
+        border-bottom: 1px solid #eee;
+    }
+    .table-container {
+        height: 500px; 
+    }
+}
 table { width: 100%; border-collapse: collapse; }
 thead { position: sticky; top: 0; background: #f2f2f2; z-index: 5; }
 th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }

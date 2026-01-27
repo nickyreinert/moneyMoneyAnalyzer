@@ -26,9 +26,18 @@
     </div>
     <div class="breadcrumbs" id="breadcrumbs"></div>
     <div class="chart-container">
-        <canvas id="combinedChart"></canvas>
-        <canvas id="growthChart"></canvas>
-        <canvas id="averageChart"></canvas>
+        <div class="chart-wrapper" id="wrapper-combined">
+            <canvas id="combinedChart"></canvas>
+            <button class="enlarge-btn" onclick="enlargeChart('combinedChart', 'wrapper-combined')">⤢</button>
+        </div>
+        <div class="chart-wrapper" id="wrapper-growth">
+            <canvas id="growthChart"></canvas>
+            <button class="enlarge-btn" onclick="enlargeChart('growthChart', 'wrapper-growth')">⤢</button>
+        </div>
+        <div class="chart-wrapper" id="wrapper-average">
+            <canvas id="averageChart"></canvas>
+            <button class="enlarge-btn" onclick="enlargeChart('averageChart', 'wrapper-average')">⤢</button>
+        </div>
     </div>
     <div class="table-container">
         <table id="transactionTable">
@@ -68,6 +77,19 @@
         </div>
     </div>
 
+    <!-- Chart Enlarge Modal -->
+    <div id="chartModal" class="modal">
+        <div class="modal-content chart-modal-content">
+            <div class="modal-header">
+                <h2 id="chartModalTitle">Chart View</h2>
+                <span class="close" id="closeChartModal">&times;</span>
+            </div>
+            <div class="modal-body chart-modal-body">
+                <div id="modalChartContainer"></div>
+            </div>
+        </div>
+    </div>
+
     <script type="module">
         import { parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path, reset_state, calculate_recurring_average, calculate_monthly_averages } from './src/data.js';
         import { render_combined_chart, render_growth_chart, render_averages_chart } from './src/charts.js';
@@ -80,6 +102,44 @@
         let recurringEnabled = false;
         let recurringRules = [];
         
+        // Expose function globally for the onclick handlers
+        window.enlargeChart = function(canvasId, wrapperId) {
+            const canvas = document.getElementById(canvasId);
+            const wrapper = document.getElementById(wrapperId);
+            const modal = document.getElementById('chartModal');
+            const container = document.getElementById('modalChartContainer');
+            
+            // Move canvas to modal
+            container.appendChild(canvas);
+            
+            // Show modal
+            modal.style.display = 'block';
+            
+            // Resize chart
+            const chart = Chart.getChart(canvasId);
+            if (chart) chart.resize();
+            
+            // Setup close handler specific to this chart instance
+            const closeBtn = document.getElementById('closeChartModal');
+            
+            const cleanup = () => {
+                modal.style.display = 'none';
+                wrapper.insertBefore(canvas, wrapper.firstChild); // Put back before button
+                // button is last child, canvas was first
+                if (chart) chart.resize();
+                // Remove this specific listener to avoid duplicates or closure issues
+                closeBtn.removeEventListener('click', cleanup);
+                window.removeEventListener('click', outsideClick);
+            };
+            
+            const outsideClick = (e) => {
+                if (e.target === modal) cleanup();
+            }
+
+            closeBtn.addEventListener('click', cleanup);
+            window.addEventListener('click', outsideClick);
+        };
+
         function render_all() {
             const fd = currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : [...module_data];
             
