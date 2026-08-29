@@ -70,7 +70,7 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
     console.log('Recurring Avg Data (should be in euros, e.g. 151):', recurringValues[0]);
     const recurringAvgDataset = {
       type: 'line',
-      label: 'Recurring Avg (Monthly)',
+      label: 'Ø Fixkosten (Monat)',
       data: recurringValues,
       borderColor: '#e74c3c',
       backgroundColor: 'rgba(231,76,60,0.1)',
@@ -259,6 +259,75 @@ export function render_averages_chart(avgData, canvasId) {
             }
         }
     });
+}
+
+let leak_chart = null;
+
+// Horizontal ranked bar chart of expense categories, colored by group
+// (fixed/essential/discretionary/...) so discretionary "money leaks"
+// (Amazon, Steam, delivery apps, ...) visually stand out at the top.
+export function render_leak_chart(leakReport, groupColors, canvasId, onBarClick, topN = 15) {
+  const rows = leakReport.slice(0, topN);
+  const labels = rows.map(r => r.category);
+  const values = rows.map(r => r.cents / 100);
+  const colors = rows.map(r => groupColors[r.group] || '#95a5a6');
+
+  if (leak_chart) leak_chart.destroy();
+  leak_chart = new Chart(document.getElementById(canvasId), {
+    type: 'bar',
+    data: { labels, datasets: [{ label: 'Ausgaben', data: values, backgroundColor: colors }] },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { beginAtZero: true, ticks: { callback: v => v.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) } }
+      },
+      onClick: (evt, elements) => {
+        if (!elements || !elements.length || typeof onBarClick !== 'function') return;
+        onBarClick(rows[elements[0].index].category);
+      },
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'Wo fließt das Geld hin? (Top Kategorien)' },
+        tooltip: { callbacks: { label: (ctx) => (ctx.parsed.x).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) } }
+      }
+    }
+  });
+}
+
+let group_summary_chart = null;
+
+// Donut chart summarizing expenses by group (Fixkosten / Notwendig /
+// Diskretionär / ...) against total income, to make the savings rate (or
+// deficit) immediately visible.
+export function render_group_summary_chart(summary, ruleSetGroups, canvasId) {
+  const ids = Object.keys(summary.byGroup).filter(id => summary.byGroup[id] > 0);
+  const meta = id => (ruleSetGroups || []).find(g => g.id === id) || { label: id, color: '#95a5a6' };
+  const labels = ids.map(id => meta(id).label);
+  const values = ids.map(id => summary.byGroup[id] / 100);
+  const colors = ids.map(id => meta(id).color);
+
+  const netCents = summary.net;
+  const netLabel = (netCents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+
+  if (group_summary_chart) group_summary_chart.destroy();
+  group_summary_chart = new Chart(document.getElementById(canvasId), {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: colors }] },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        title: {
+          display: true,
+          text: `Einnahmen ${(summary.totalIncome / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}  →  Netto ${netLabel}`
+        },
+        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${(ctx.parsed).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}` } },
+        legend: { position: 'bottom' }
+      }
+    }
+  });
 }
 
 let growth_chart = null;

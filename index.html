@@ -20,11 +20,20 @@
         <span style="margin-left: 15px;">Chart:</span>
         <label><input type="radio" name="chartType" value="line" checked> Line</label>
         <label><input type="radio" name="chartType" value="bar"> Bar</label>
-        <span style="margin-left: 20px;">Recurring:</span>
-        <label><input type="checkbox" id="recurringToggle"> Show Base Costs</label>
-        <button id="configRecurringBtn" style="margin-left: 10px;">⚙️ Configure Rules</button>
+        <button id="configRulesBtn" style="margin-left: 20px;">⚙️ Klassifizierungsregeln</button>
     </div>
     <div class="breadcrumbs" id="breadcrumbs"></div>
+    <div class="stats-bar" id="statsBar"></div>
+    <div class="chart-container" id="moneyFlowContainer">
+        <div class="chart-wrapper" id="wrapper-leak">
+            <canvas id="leakChart"></canvas>
+            <button class="enlarge-btn" onclick="enlargeChart('leakChart', 'wrapper-leak')">⤢</button>
+        </div>
+        <div class="chart-wrapper" id="wrapper-groupSummary">
+            <canvas id="groupSummaryChart"></canvas>
+            <button class="enlarge-btn" onclick="enlargeChart('groupSummaryChart', 'wrapper-groupSummary')">⤢</button>
+        </div>
+    </div>
     <div class="chart-container">
         <div class="chart-wrapper" id="wrapper-combined">
             <canvas id="combinedChart"></canvas>
@@ -47,32 +56,38 @@
                     <th data-column="name">Name <input type="text" placeholder="Filter Name"></th>
                     <th data-column="verwendungszweck">Verwendungszweck <input type="text" placeholder="Filter Verwendungszweck"></th>
                     <th data-column="betrag">Betrag <input type="text" placeholder="Filter Betrag"></th>
+                    <th data-column="kategorie">Kategorie <input type="text" placeholder="Filter Kategorie"></th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
 
-    <!-- Recurring Transactions Config Modal -->
-    <div id="recurringModal" class="modal">
+    <!-- Classification Rules Config Modal -->
+    <div id="rulesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Configure Recurring Transactions</h2>
+                <h2>Klassifizierungsregeln</h2>
                 <span class="close">&times;</span>
             </div>
             <div class="modal-body">
-                <p>Define regex rules to identify recurring transactions (rent, subscriptions, insurance, etc.):</p>
+                <p>
+                    Jede Regel ordnet Transaktionen anhand von Regex-Mustern (Name / Verwendungszweck / Bank-Kategorie)
+                    einer Kategorie und einer Gruppe zu. Die erste passende Regel (höchste Priorität) gewinnt.
+                    Ohne Treffer wird auf die Bank-Kategorie zurückgefallen.
+                </p>
                 <div id="rulesList"></div>
-                <button id="addRuleBtn" style="margin-top: 10px;">+ Add Rule</button>
+                <button id="addRuleBtn" style="margin-top: 10px;">+ Regel hinzufügen</button>
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-                    <button id="exportRulesBtn">📤 Export Rules</button>
-                    <button id="importRulesBtn">📥 Import Rules</button>
+                    <button id="loadDefaultRulesBtn">↺ Standardregeln laden</button>
+                    <button id="exportRulesBtn">📤 SETTING exportieren</button>
+                    <button id="importRulesBtn">📥 SETTING importieren</button>
                     <input type="file" id="importRulesFile" accept=".json" style="display: none;">
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="saveRulesBtn" class="primary">Save Rules</button>
-                <button id="cancelRulesBtn">Cancel</button>
+                <button id="saveRulesBtn" class="primary">Speichern</button>
+                <button id="cancelRulesBtn">Abbrechen</button>
             </div>
         </div>
     </div>
@@ -91,17 +106,32 @@
     </div>
 
     <script type="module">
-        import { parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path, reset_state, calculate_recurring_average, calculate_monthly_averages } from './src/data.js';
-        import { render_combined_chart, render_growth_chart, render_averages_chart } from './src/charts.js';
+        import {
+            parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path,
+            reset_state, calculate_classified_average, calculate_monthly_averages,
+            build_leak_report, build_group_summary
+        } from './src/data.js';
+        import { render_combined_chart, render_growth_chart, render_averages_chart, render_leak_chart, render_group_summary_chart } from './src/charts.js';
         import { render_table, init_table_controls } from './src/table.js';
+        import { load_default_rule_set, get_stored_rule_set, save_rule_set, classify_all } from './src/rules.js';
 
         let currentYear = '';
         let tableControlsInitialized = false;
         let growthMode = 'mom';
         let chartType = 'line';
-        let recurringEnabled = false;
-        let recurringRules = [];
-        
+        let ruleSet = null;
+        let leakCategoryFilter = null;
+
+        function group_colors() {
+            const map = {};
+            (ruleSet.groups || []).forEach(g => { map[g.id] = g.color; });
+            return map;
+        }
+
+        function fmt_eur(cents) {
+            return (cents / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        }
+
         // Expose function globally for the onclick handlers
         window.enlargeChart = function(canvasId, wrapperId) {
             const canvas = document.getElementById(canvasId);
@@ -142,71 +172,31 @@
 
         function render_all() {
             const fd = currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : [...module_data];
-            
-            // Determine the matcher and level based on recurring mode
-            let recurringMatcher = null;
-            let effectiveLevel = 0;
-            
-            if (recurringEnabled && current_path.length === 0) {
-                // At top level with recurring enabled: use two-category split
-                recurringMatcher = matchesRecurringRule;
-                effectiveLevel = 0;
-            } else if (recurringEnabled && current_path.length >= 1) {
-                // After clicking into "Recurring / Base Costs" or "Other Expenses"
-                // We keep the recurring matcher active to filter, but show original categories
-                if (current_path[0] === 'Recurring / Base Costs' || current_path[0] === 'Other Expenses') {
-                    recurringMatcher = matchesRecurringRule;
-                    // effectiveLevel is now based on actual drill depth minus 1 (for the recurring/other level)
-                    effectiveLevel = current_path.length - 1;
-                }
-            } else {
-                // Normal mode: regular category drill-down
-                effectiveLevel = current_path.length;
-            }
-            
+            const effectiveLevel = current_path.length;
+
             const onBarClick = (cat) => {
-                // Prevent clicking on "Other" category
                 if (cat === 'Other') return;
-                
-                // Special handling for recurring mode
-                if (recurringEnabled && current_path.length === 0) {
-                    // Clicking on "Recurring / Base Costs" or "Other Expenses"
-                    current_path.push(cat);
-                    localStorage.setItem('currentPath', JSON.stringify(current_path));
-                    render_all();
-                } else if (recurringEnabled && current_path.length === 1 && 
-                          (current_path[0] === 'Recurring / Base Costs' || current_path[0] === 'Other Expenses')) {
-                    // We're viewing actual categories, drill into them normally
-                    current_path.push(cat);
-                    localStorage.setItem('currentPath', JSON.stringify(current_path));
-                    render_all();
-                } else {
-                    // Normal drill-down behavior
-                    current_path.push(cat);
-                    localStorage.setItem('currentPath', JSON.stringify(current_path));
-                    render_all();
-                }
+                current_path.push(cat);
+                localStorage.setItem('currentPath', JSON.stringify(current_path));
+                render_all();
             };
-            
-            // Group data with recurring matcher if applicable
-            const recurringPath = recurringEnabled ? current_path : null;
-            const grouped = group_data(fd, effectiveLevel, recurringMatcher, recurringPath);
-            
-            // Calculate recurring average (always, regardless of toggle state)
-            // The toggle only affects the chart grouping, not the average line visibility
-            const recurringAvgData = calculate_recurring_average(fd, matchesRecurringRule);
-            
+
+            const grouped = group_data(fd, effectiveLevel);
+
+            // Reference line: average monthly "Fixkosten" (kaum beeinflussbare Gruppe)
+            const fixedAvgData = calculate_classified_average(fd, 'fixed');
+
             // For YoY growth, we need data from previous year too
             let growthData = fd;
             if (growthMode === 'yoy' && currentYear) {
                 const prevYear = parseInt(currentYear) - 1;
-                growthData = module_data.filter(d => 
+                growthData = module_data.filter(d =>
                     d.date.getFullYear() == currentYear || d.date.getFullYear() == prevYear
                 );
             }
-            const growthGrouped = group_data(growthData, effectiveLevel, recurringMatcher, recurringPath);
-            
-            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick, recurringAvgData);
+            const growthGrouped = group_data(growthData, effectiveLevel);
+
+            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick, fixedAvgData);
             render_growth_chart(growthGrouped.out, 'growthChart', growthMode, chartType);
 
             // Calculate and Render Averages (using full dataset for context, respecting drill-down)
@@ -217,14 +207,61 @@
             const avgData = calculate_monthly_averages(avgRows);
             render_averages_chart(avgData, 'averageChart');
 
-            render_table(fd, '#transactionTable tbody', current_path, recurringMatcher, recurringPath);
+            // ----- Money Flow: "wo fließt das Geld hin?" -----
+            const leakReport = build_leak_report(fd);
+            const groupSummary = build_group_summary(fd);
+            render_leak_chart(leakReport, group_colors(), 'leakChart', onLeakBarClick);
+            render_group_summary_chart(groupSummary, ruleSet.groups, 'groupSummaryChart');
+            render_stats_bar(groupSummary);
+
+            render_table(fd, '#transactionTable tbody', current_path, leakCategoryFilter);
             render_breadcrumbs();
-            
+
             // Initialize table controls after first render
             if (!tableControlsInitialized) {
                 init_table_controls(() => render_all());
                 tableControlsInitialized = true;
             }
+        }
+
+        function onLeakBarClick(category) {
+            leakCategoryFilter = leakCategoryFilter === category ? null : category;
+            render_table(currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : module_data,
+                '#transactionTable tbody', current_path, leakCategoryFilter);
+            render_stats_filter_note();
+        }
+
+        function render_stats_filter_note() {
+            const el = document.getElementById('statsBar');
+            const note = el.querySelector('.leak-filter-note');
+            if (note) note.remove();
+            if (leakCategoryFilter) {
+                const span = document.createElement('span');
+                span.className = 'leak-filter-note';
+                span.style.marginLeft = '15px';
+                span.innerHTML = ` | Tabelle gefiltert: <b>${leakCategoryFilter}</b> <a href="#" id="clearLeakFilter">(zurücksetzen)</a>`;
+                el.appendChild(span);
+                document.getElementById('clearLeakFilter').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    leakCategoryFilter = null;
+                    render_all();
+                });
+            }
+        }
+
+        function render_stats_bar(groupSummary) {
+            const el = document.getElementById('statsBar');
+            const savingsRate = groupSummary.totalIncome > 0
+                ? ((groupSummary.net / groupSummary.totalIncome) * 100).toFixed(1)
+                : '–';
+            const netColor = groupSummary.net >= 0 ? '#2ecc71' : '#e74c3c';
+            el.innerHTML = `
+                Einnahmen: <b>${fmt_eur(groupSummary.totalIncome)}</b>
+                &nbsp;|&nbsp; Ausgaben: <b>${fmt_eur(groupSummary.totalExpenses)}</b>
+                &nbsp;|&nbsp; Netto: <b style="color:${netColor}">${fmt_eur(groupSummary.net)}</b>
+                &nbsp;|&nbsp; Sparquote: <b style="color:${netColor}">${savingsRate}%</b>
+            `;
+            render_stats_filter_note();
         }
 
         // Wire up UI
@@ -245,17 +282,19 @@
                 const csv = e.target.result;
                 localStorage.setItem('csvData', csv);
                 parse_csv(csv);
+                classify_all(module_data, ruleSet);
                 populate_year_buttons();
                 tableControlsInitialized = false;
+                leakCategoryFilter = null;
                 render_all();
             };
             reader.readAsText(file);
         }
-        
+
         document.getElementById('csvFile').addEventListener('change', (e) => {
             loadCsvFile(e.target.files[0]);
         });
-        
+
         document.getElementById('loadSampleBtn').addEventListener('click', async () => {
             try {
                 const response = await fetch('./sample_data.json');
@@ -263,8 +302,10 @@
                 const csvData = jsonToCsv(jsonData);
                 localStorage.setItem('csvData', csvData);
                 parse_csv(csvData);
+                classify_all(module_data, ruleSet);
                 populate_year_buttons();
                 tableControlsInitialized = false;
+                leakCategoryFilter = null;
                 render_all();
             } catch (error) {
                 console.error('Error loading sample data:', error);
@@ -344,218 +385,172 @@
             render_all();
         }
 
-        // ===== RECURRING TRANSACTIONS LOGIC =====
-        
-        function loadRecurringRules() {
-            const stored = localStorage.getItem('recurringRules');
-            if (stored) {
-                try {
-                    recurringRules = JSON.parse(stored);
-                } catch (e) {
-                    console.error('Failed to parse recurring rules', e);
-                    recurringRules = [];
-                }
-            }
+        // ===== CLASSIFICATION RULES ("SETTING") LOGIC =====
+
+        function group_options_html(selectedId) {
+            return (ruleSet.groups || []).map(g =>
+                `<option value="${g.id}" ${g.id === selectedId ? 'selected' : ''}>${g.label}</option>`
+            ).join('');
         }
-        
-        function saveRecurringRules() {
-            localStorage.setItem('recurringRules', JSON.stringify(recurringRules));
-        }
-        
-        function matchesRecurringRule(transaction) {
-            for (const rule of recurringRules) {
-                try {
-                    // Skip empty patterns - they should not match
-                    const hasNamePattern = rule.namePattern && rule.namePattern.trim() !== '';
-                    const hasVerwendungPattern = rule.verwendungPattern && rule.verwendungPattern.trim() !== '';
-                    
-                    // If both patterns are empty, skip this rule
-                    if (!hasNamePattern && !hasVerwendungPattern) {
-                        continue;
-                    }
-                    
-                    let nameMatch = false;
-                    let verwendungMatch = false;
-                    
-                    if (hasNamePattern) {
-                        const nameRegex = new RegExp(rule.namePattern, 'i');
-                        nameMatch = nameRegex.test(transaction.name);
-                    }
-                    
-                    if (hasVerwendungPattern) {
-                        const verwendungRegex = new RegExp(rule.verwendungPattern, 'i');
-                        verwendungMatch = verwendungRegex.test(transaction.verwendungszweck);
-                    }
-                    
-                    // AND: both patterns must match (if both exist)
-                    if (rule.matchType === 'and') {
-                        if (hasNamePattern && hasVerwendungPattern && nameMatch && verwendungMatch) {
-                            return rule.label || 'Recurring Transaction';
-                        }
-                        // If only one pattern exists, it must match
-                        if (hasNamePattern && !hasVerwendungPattern && nameMatch) {
-                            return rule.label || 'Recurring Transaction';
-                        }
-                        if (!hasNamePattern && hasVerwendungPattern && verwendungMatch) {
-                            return rule.label || 'Recurring Transaction';
-                        }
-                    }
-                    
-                    // OR: at least one pattern must match
-                    if (rule.matchType === 'or') {
-                        if (nameMatch || verwendungMatch) {
-                            return rule.label || 'Recurring Transaction';
-                        }
-                    }
-                } catch (e) {
-                    console.error('Invalid regex in rule:', rule, e);
-                }
-            }
-            return null;
-        }
-        
+
         // Modal Management
-        const modal = document.getElementById('recurringModal');
+        const modal = document.getElementById('rulesModal');
         const closeBtn = modal.querySelector('.close');
-        const configBtn = document.getElementById('configRecurringBtn');
+        const configBtn = document.getElementById('configRulesBtn');
         const saveBtn = document.getElementById('saveRulesBtn');
         const cancelBtn = document.getElementById('cancelRulesBtn');
         const addRuleBtn = document.getElementById('addRuleBtn');
+        const loadDefaultRulesBtn = document.getElementById('loadDefaultRulesBtn');
         const rulesListEl = document.getElementById('rulesList');
-        
+
         configBtn.addEventListener('click', () => {
             renderRulesList();
             modal.style.display = 'block';
         });
-        
+
         closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
         cancelBtn.addEventListener('click', () => { modal.style.display = 'none'; });
-        
+
         window.addEventListener('click', (e) => {
             if (e.target === modal) modal.style.display = 'none';
         });
-        
+
         addRuleBtn.addEventListener('click', () => {
-            recurringRules.push({
-                label: 'New Rule',
+            const maxPriority = ruleSet.rules.reduce((m, r) => Math.max(m, r.priority || 0), 0);
+            ruleSet.rules.push({
+                id: 'custom_' + Date.now(),
+                label: 'Neue Regel',
+                category: 'Neue Kategorie',
+                group: 'discretionary',
                 namePattern: '',
                 verwendungPattern: '',
-                matchType: 'or'
+                kategoriePattern: '',
+                matchType: 'or',
+                priority: maxPriority + 10
             });
             renderRulesList();
         });
-        
+
+        loadDefaultRulesBtn.addEventListener('click', async () => {
+            if (!confirm('Eigene Regeln durch die Standardregeln ersetzen?')) return;
+            const def = await load_default_rule_set();
+            ruleSet = JSON.parse(JSON.stringify(def));
+            renderRulesList();
+        });
+
         function renderRulesList() {
             rulesListEl.innerHTML = '';
-            if (recurringRules.length === 0) {
-                rulesListEl.innerHTML = '<p style="color: #999; font-style: italic;">No rules defined. Click "+ Add Rule" to create one.</p>';
+            const rules = ruleSet.rules || [];
+            if (rules.length === 0) {
+                rulesListEl.innerHTML = '<p style="color: #999; font-style: italic;">Keine Regeln definiert. Klicke auf "+ Regel hinzufügen".</p>';
                 return;
             }
-            
-            recurringRules.forEach((rule, idx) => {
+
+            [...rules].sort((a, b) => (b.priority || 0) - (a.priority || 0)).forEach((rule) => {
+                const idx = rules.indexOf(rule);
                 const ruleDiv = document.createElement('div');
                 ruleDiv.className = 'rule-item';
                 ruleDiv.innerHTML = `
                     <div class="rule-header">
-                        <input type="text" placeholder="Rule Label (e.g., 'Rent', 'Netflix')" value="${rule.label}" data-idx="${idx}" data-field="label">
+                        <input type="text" placeholder="Label (z.B. 'Miete', 'Steam')" value="${rule.label}" data-idx="${idx}" data-field="label">
                         <button class="delete-rule" data-idx="${idx}">🗑️</button>
                     </div>
-                    <label>Name Pattern (Regex):</label>
-                    <input type="text" placeholder="e.g., ^Amazon|Netflix|Spotify" value="${rule.namePattern}" data-idx="${idx}" data-field="namePattern">
-                    <label>Verwendungszweck Pattern (Regex):</label>
-                    <input type="text" placeholder="e.g., Subscription|Monthly|Miete" value="${rule.verwendungPattern}" data-idx="${idx}" data-field="verwendungPattern">
-                    <label>Match Type:</label>
+                    <label>Kategorie (Anzeige im Dashboard):</label>
+                    <input type="text" placeholder="z.B. Gaming" value="${rule.category || ''}" data-idx="${idx}" data-field="category">
+                    <label>Gruppe:</label>
+                    <select data-idx="${idx}" data-field="group">${group_options_html(rule.group)}</select>
+                    <label>Name-Muster (Regex):</label>
+                    <input type="text" placeholder="z.B. Amazon|Netflix|Spotify" value="${rule.namePattern || ''}" data-idx="${idx}" data-field="namePattern">
+                    <label>Verwendungszweck-Muster (Regex):</label>
+                    <input type="text" placeholder="z.B. Miete|Abonnement" value="${rule.verwendungPattern || ''}" data-idx="${idx}" data-field="verwendungPattern">
+                    <label>Bank-Kategorie-Muster (Regex, optional):</label>
+                    <input type="text" placeholder="z.B. Paypal" value="${rule.kategoriePattern || ''}" data-idx="${idx}" data-field="kategoriePattern">
+                    <label>Match-Typ:</label>
                     <select data-idx="${idx}" data-field="matchType">
-                        <option value="or" ${rule.matchType === 'or' ? 'selected' : ''}>OR (either pattern matches)</option>
-                        <option value="and" ${rule.matchType === 'and' ? 'selected' : ''}>AND (both patterns must match)</option>
+                        <option value="or" ${rule.matchType === 'or' ? 'selected' : ''}>OR (irgendein Muster trifft)</option>
+                        <option value="and" ${rule.matchType === 'and' ? 'selected' : ''}>AND (alle vorhandenen Muster müssen treffen)</option>
                     </select>
+                    <label>Priorität (höher = wird zuerst geprüft):</label>
+                    <input type="number" value="${rule.priority || 0}" data-idx="${idx}" data-field="priority">
                 `;
                 rulesListEl.appendChild(ruleDiv);
             });
-            
+
             // Add event listeners for inputs
             rulesListEl.querySelectorAll('input, select').forEach(input => {
                 input.addEventListener('input', (e) => {
                     const idx = parseInt(e.target.dataset.idx);
                     const field = e.target.dataset.field;
-                    recurringRules[idx][field] = e.target.value;
+                    const value = field === 'priority' ? (parseInt(e.target.value) || 0) : e.target.value;
+                    ruleSet.rules[idx][field] = value;
                 });
             });
-            
+
             // Add delete button listeners
             rulesListEl.querySelectorAll('.delete-rule').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const idx = parseInt(e.target.dataset.idx);
-                    recurringRules.splice(idx, 1);
+                    ruleSet.rules.splice(idx, 1);
                     renderRulesList();
                 });
             });
         }
-        
+
         saveBtn.addEventListener('click', () => {
-            saveRecurringRules();
+            save_rule_set(ruleSet);
             modal.style.display = 'none';
-            if (recurringEnabled && module_data.length > 0) {
+            if (module_data.length > 0) {
+                classify_all(module_data, ruleSet);
                 render_all();
             }
         });
-        
-        // Import/Export
+
+        // Import/Export ("SETTING" file, see README for schema + LLM prompt template)
         document.getElementById('exportRulesBtn').addEventListener('click', () => {
-            const dataStr = JSON.stringify(recurringRules, null, 2);
+            const dataStr = JSON.stringify(ruleSet, null, 2);
             const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'recurring_rules.json';
+            a.download = 'moneymoney_classification_settings.json';
             a.click();
             URL.revokeObjectURL(url);
         });
-        
+
         document.getElementById('importRulesBtn').addEventListener('click', () => {
             document.getElementById('importRulesFile').click();
         });
-        
+
         document.getElementById('importRulesFile').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = (ev) => {
                 try {
-                    recurringRules = JSON.parse(ev.target.result);
-                    saveRecurringRules();
+                    const imported = JSON.parse(ev.target.result);
+                    if (!imported.rules || !Array.isArray(imported.rules)) {
+                        throw new Error('Datei enthält kein gültiges "rules"-Array');
+                    }
+                    ruleSet = imported;
                     renderRulesList();
-                    alert('Rules imported successfully!');
+                    alert('SETTING erfolgreich importiert! Klicke "Speichern" um es zu übernehmen.');
                 } catch (err) {
-                    alert('Failed to import rules: ' + err.message);
+                    alert('Import fehlgeschlagen: ' + err.message);
                 }
             };
             reader.readAsText(file);
         });
-        
-        // Recurring Toggle
-        document.getElementById('recurringToggle').addEventListener('change', (e) => {
-            recurringEnabled = e.target.checked;
-            localStorage.setItem('recurringEnabled', recurringEnabled);
-            if (module_data.length > 0) {
-                current_path.length = 0;
-                localStorage.setItem('currentPath', JSON.stringify([]));
-                render_all();
-            }
-        });
 
         // Restore from localStorage
-        window.addEventListener('load', () => {
-            loadRecurringRules();
-            const storedRecurringEnabled = localStorage.getItem('recurringEnabled');
-            if (storedRecurringEnabled === 'true') {
-                recurringEnabled = true;
-                document.getElementById('recurringToggle').checked = true;
-            }
-            
+        window.addEventListener('load', async () => {
+            const defaultRuleSet = await load_default_rule_set();
+            const stored = get_stored_rule_set();
+            ruleSet = stored || JSON.parse(JSON.stringify(defaultRuleSet));
+
             const storedCsv = localStorage.getItem('csvData');
             if (storedCsv) {
                 parse_csv(storedCsv);
+                classify_all(module_data, ruleSet);
                 populate_year_buttons();
                 tableControlsInitialized = false;
                 const storedPath = localStorage.getItem('currentPath');

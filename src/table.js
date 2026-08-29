@@ -2,35 +2,21 @@
 let sortState = { column: null, ascending: true };
 let filterState = {};
 
-export function render_table(rows, tbodySelector, current_path, recurringMatcher = null, recurringPath = null) {
+export function render_table(rows, tbodySelector, current_path, leakCategoryFilter = null) {
   const tbody = document.querySelector(tbodySelector);
   tbody.innerHTML = '';
-  
+
   // Filter transactions based on mode
   let display = rows.filter(r => r.in_out === 'out');
-  
-  // Handle recurring mode filtering
-  if (recurringPath && recurringPath.length >= 1) {
-    const isRecurringPath = recurringPath[0] === 'Recurring / Base Costs';
-    const isOtherPath = recurringPath[0] === 'Other Expenses';
-    
-    // Filter by recurring/non-recurring
-    if (isRecurringPath) {
-      display = display.filter(r => recurringMatcher && recurringMatcher(r));
-    } else if (isOtherPath) {
-      display = display.filter(r => !recurringMatcher || !recurringMatcher(r));
-    }
-    
-    // Apply category filtering if drilled deeper
-    if (recurringPath.length > 1) {
-      const actualPath = recurringPath.slice(1);
-      display = display.filter(r => actualPath.every((p, i) => r.categories[i] === p));
-    }
+
+  if (leakCategoryFilter) {
+    // Money-flow drill-down: filter by rule-engine classification category
+    display = display.filter(r => r._cls && r._cls.category === leakCategoryFilter);
   } else if (current_path.length > 0) {
-    // Normal mode: filter by category path
+    // Normal mode: filter by bank category path
     display = display.filter(r => current_path.every((p, i) => r.categories[i] === p));
   }
-  
+
   // Apply column filters from saved state
   Object.keys(filterState).forEach(column => {
     const filterValue = filterState[column].toLowerCase().trim();
@@ -41,6 +27,7 @@ export function render_table(rows, tbodySelector, current_path, recurringMatcher
         else if (column === 'name') cellValue = r.Name || '';
         else if (column === 'verwendungszweck') cellValue = r.Verwendungszweck || '';
         else if (column === 'betrag') cellValue = (r.betrag_cents / 100).toFixed(2);
+        else if (column === 'kategorie') cellValue = r._cls ? r._cls.category : '';
         return cellValue.toLowerCase().includes(filterValue);
       });
     }
@@ -62,6 +49,9 @@ export function render_table(rows, tbodySelector, current_path, recurringMatcher
       } else if (sortState.column === 'betrag') {
         aVal = a.betrag_cents;
         bVal = b.betrag_cents;
+      } else if (sortState.column === 'kategorie') {
+        aVal = (a._cls ? a._cls.category : '').toLowerCase();
+        bVal = (b._cls ? b._cls.category : '').toLowerCase();
       }
       if (aVal < bVal) return sortState.ascending ? -1 : 1;
       if (aVal > bVal) return sortState.ascending ? 1 : -1;
@@ -72,7 +62,8 @@ export function render_table(rows, tbodySelector, current_path, recurringMatcher
   display.forEach(r => {
     const tr = document.createElement('tr');
     const euro = (r.betrag_cents / 100).toFixed(2);
-    tr.innerHTML = `<td>${r.Datum}</td><td>${r.Name}</td><td>${r.Verwendungszweck}</td><td>${euro}</td>`;
+    const cls = r._cls ? r._cls.category : '';
+    tr.innerHTML = `<td>${r.Datum}</td><td>${r.Name}</td><td>${r.Verwendungszweck}</td><td>${euro}</td><td>${cls}</td>`;
     tbody.appendChild(tr);
   });
 }

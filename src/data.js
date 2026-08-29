@@ -29,60 +29,37 @@ export function parse_date(s) {
   return new Date(y, m-1, d);
 }
 
-export function group_data(rows, level, recurringMatcher = null, recurringPath = null) {
+// Rows classified (via rules.js classify_all) as excludeFromTotals are
+// internal transfers (e.g. PayPal wallet funding legs) that have zero real
+// cashflow impact — the actual expense/income already shows up as its own
+// transaction elsewhere. They must be excluded from every sum, otherwise
+// income and expenses both get inflated by the same internal amount.
+function is_real_cashflow(r) {
+  return !(r._cls && r._cls.excluded);
+}
+
+export function group_data(rows, level) {
   const out = {};
   const inData = {};
-  
+
   // For expenses (out) - apply filtering based on mode
-  let filteredOut = rows.filter(r => r.in_out === 'out');
-  
-  // Handle recurring mode filtering
-  if (recurringPath && recurringPath.length >= 1) {
-    const isRecurringPath = recurringPath[0] === 'Recurring / Base Costs';
-    const isOtherPath = recurringPath[0] === 'Other Expenses';
-    
-    // First: filter by recurring/non-recurring
-    if (isRecurringPath) {
-      filteredOut = filteredOut.filter(r => recurringMatcher && recurringMatcher(r));
-    } else if (isOtherPath) {
-      filteredOut = filteredOut.filter(r => !recurringMatcher || !recurringMatcher(r));
-    }
-    
-    // Second: if we drilled deeper, apply category filtering from original data
-    if (recurringPath.length > 1) {
-      const actualPath = recurringPath.slice(1); // Skip first element (Recurring/Other)
-      filteredOut = filteredOut.filter(r => actualPath.every((p, i) => r.categories[i] === p));
-    }
-  } else if (current_path.length > 0 && !recurringMatcher) {
-    // Normal mode: apply current_path filtering from original categories
+  let filteredOut = rows.filter(r => r.in_out === 'out' && is_real_cashflow(r));
+
+  if (current_path.length > 0) {
+    // apply current_path filtering from original bank categories
     filteredOut = filteredOut.filter(r => current_path.every((p, i) => r.categories[i] === p));
   }
-  
+
   filteredOut.forEach(r => {
     const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
-    let cat;
-    
-    // Determine which category to use
-    if (recurringMatcher && level === 0 && current_path.length === 0) {
-      // Top level with recurring enabled: show two meta-categories
-      const recurringLabel = recurringMatcher(r);
-      if (recurringLabel) {
-        cat = 'Recurring / Base Costs';
-      } else {
-        cat = 'Other Expenses';
-      }
-    } else {
-      // Use original category from CSV data at the current level
-      cat = r.categories[level] || 'Other';
-    }
-    
+    const cat = r.categories[level] || 'Other';
     out[key] = out[key] || {};
     out[key][cat] = (out[key][cat] || 0) + Math.abs(r.betrag_cents);
   });
   
   // For income (in) always aggregate from all rows provided (year-filtered), ignore current_path
   rows.forEach(r => {
-    if (r.in_out === 'in') {
+    if (r.in_out === 'in' && is_real_cashflow(r)) {
       const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
       inData[key] = (inData[key] || 0) + r.betrag_cents;
     }
@@ -117,6 +94,7 @@ export function calculate_monthly_averages(rows) {
   }
 
   rows.forEach(r => {
+    if (!is_real_cashflow(r)) return;
     const m = r.date.getMonth();
     if (r.in_out === 'in') {
       monthStats[m].in += r.betrag_cents;
@@ -140,45 +118,69 @@ export function calculate_monthly_averages(rows) {
   return { monthlyAverages, globalAverage };
 }
 
-export function calculate_recurring_average(rows, recurringMatcher) {
-  if (!recurringMatcher) return null;
-  
-  // Filter to only recurring transactions
-  const recurringTxns = rows.filter(r => r.in_out === 'out' && recurringMatcher(r));
-  
-  console.log('Recurring transactions count:', recurringTxns.length);
-  
-  if (recurringTxns.length === 0) return null;
-  
-  // Get all months covered in the data
+// Monthly average of a single classified category (e.g. the "fixed" group
+// total, or one leak category), for overlaying as a reference line on the
+// combined chart. `matchGroupOrCategory` is compared against r._cls.group
+// and r._cls.category.
+export function calculate_classified_average(rows, matchGroupOrCategory) {
+  if (!matchGroupOrCategory) return null;
+
+  const matching = rows.filter(r => r.in_out === 'out' && is_real_cashflow(r) &&
+    r._cls && (r._cls.group === matchGroupOrCategory || r._cls.category === matchGroupOrCategory));
+
+  if (matching.length === 0) return null;
+
   const allMonths = new Set();
   rows.forEach(r => {
     const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
     allMonths.add(key);
   });
-  
+
   const monthCount = allMonths.size;
   if (monthCount === 0) return null;
-  
-  // Calculate total of all recurring transactions across all time
-  const totalRecurring = recurringTxns.reduce((sum, r) => sum + Math.abs(r.betrag_cents), 0);
-  
-  console.log('Total recurring (cents):', totalRecurring);
-  console.log('Month count:', monthCount);
-  
-  // Calculate monthly average (in cents)
-  const monthlyAvgCents = totalRecurring / monthCount;
-  const monthlyAvgEuros = monthlyAvgCents / 100;
-  
-  console.log('Monthly average (euros):', monthlyAvgEuros);
-  
-  // Create object with monthly average for each month (convert to euros)
+
+  const total = matching.reduce((sum, r) => sum + Math.abs(r.betrag_cents), 0);
+  const monthlyAvgEuros = (total / monthCount) / 100;
+
   const avgData = {};
-  allMonths.forEach(month => {
-    avgData[month] = monthlyAvgEuros;
-  });
-  
+  allMonths.forEach(month => { avgData[month] = monthlyAvgEuros; });
   return avgData;
+}
+
+// Ranks classified spending categories by total amount ("wo fließt das
+// Geld hin") for the given rows (already date/year filtered by the caller).
+// Requires classify_all(rows, ruleSet) to have been called first so each
+// row carries r._cls.
+export function build_leak_report(rows) {
+  const byCategory = {};
+  rows.forEach(r => {
+    if (r.in_out !== 'out' || !is_real_cashflow(r)) return;
+    const cls = r._cls || { category: 'Unklassifiziert', group: 'unclassified' };
+    const key = cls.category;
+    byCategory[key] = byCategory[key] || { category: key, group: cls.group, cents: 0, count: 0 };
+    byCategory[key].cents += Math.abs(r.betrag_cents);
+    byCategory[key].count += 1;
+  });
+  return Object.values(byCategory).sort((a, b) => b.cents - a.cents);
+}
+
+// Sums expenses per top-level group (fixed / essential / discretionary /
+// unclassified / ...) plus total income, so the UI can show a savings-rate
+// style overview ("Fixkosten vs. frei verfügbares Geld vs. Sparen").
+export function build_group_summary(rows) {
+  const byGroup = {};
+  let totalIncome = 0;
+  rows.forEach(r => {
+    if (!is_real_cashflow(r)) return;
+    if (r.in_out === 'in') {
+      totalIncome += r.betrag_cents;
+      return;
+    }
+    const cls = r._cls || { group: 'unclassified' };
+    byGroup[cls.group] = (byGroup[cls.group] || 0) + Math.abs(r.betrag_cents);
+  });
+  const totalExpenses = Object.values(byGroup).reduce((a, b) => a + b, 0);
+  return { byGroup, totalIncome, totalExpenses, net: totalIncome - totalExpenses };
 }
 
 export function reset_state() { current_path = []; localStorage.removeItem('currentPath'); }

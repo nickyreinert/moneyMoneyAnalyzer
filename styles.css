@@ -9,13 +9,16 @@ input { margin: 5px; padding: 5px; }
 .breadcrumbs span:hover { text-decoration: underline; }
 .breadcrumbs span:last-child { color: #333; cursor: default; }
 .breadcrumbs span:last-child:hover { text-decoration: none; }
-.chart-container { height: 40vh; display: flex; flex-direction: row; padding: 0; background: white; box-sizing: border-box; width: 100%; }
+.stats-bar { height: 4vh; display: flex; align-items: center; padding: 0 15px; background: #fafafa; border-bottom: 1px solid #ddd; font-size: 0.95em; }
+.chart-container { height: 32vh; display: flex; flex-direction: row; padding: 0; background: white; box-sizing: border-box; width: 100%; }
 .chart-wrapper { flex: 1; position: relative; max-width: 33.333%; height: 100%; box-sizing: border-box; padding: 5px; }
+#moneyFlowContainer { height: 34vh; }
+#moneyFlowContainer .chart-wrapper { max-width: 50%; }
 canvas { width: 100% !important; height: 100% !important; }
 .enlarge-btn { position: absolute; top: 10px; right: 10px; z-index: 10; background: rgba(255,255,255,0.7); border: 1px solid #ccc; cursor: pointer; border-radius: 4px; font-size: 1.2em; padding: 0 5px; }
 .enlarge-btn:hover { background: white; box-shadow: 0 0 3px rgba(0,0,0,0.2); }
 
-.table-container { height: 52vh; overflow-y: auto; position: relative; }
+.table-container { height: 44vh; overflow-y: auto; position: relative; }
 
 /* Chart Modal Specifics */
 .modal-content.chart-modal-content { width: 90%; height: 90vh; max-width: none; margin: 2.5vh auto; display: flex; flex-direction: column; }
@@ -27,11 +30,11 @@ canvas { width: 100% !important; height: 100% !important; }
         height: auto;
         overflow-y: auto;
     }
-    .chart-container {
+    .chart-container, #moneyFlowContainer {
         flex-direction: column;
         height: auto;
     }
-    .chart-wrapper {
+    .chart-wrapper, #moneyFlowContainer .chart-wrapper {
         max-width: 100%;
         height: 300px; /* Force fixed height for each chart block */
         margin-bottom: 20px;
