@@ -20,78 +20,103 @@
         <span style="margin-left: 15px;">Chart:</span>
         <label><input type="radio" name="chartType" value="line" checked> Line</label>
         <label><input type="radio" name="chartType" value="bar"> Bar</label>
-        <button id="configRulesBtn" style="margin-left: 20px;">⚙️ Klassifizierungsregeln</button>
-    </div>
-    <div class="breadcrumbs" id="breadcrumbs"></div>
-    <div class="stats-bar" id="statsBar"></div>
-    <div class="chart-container" id="moneyFlowContainer">
-        <div class="chart-wrapper" id="wrapper-leak">
-            <canvas id="leakChart"></canvas>
-            <button class="enlarge-btn" onclick="enlargeChart('leakChart', 'wrapper-leak')">⤢</button>
-        </div>
-        <div class="chart-wrapper" id="wrapper-groupSummary">
-            <canvas id="groupSummaryChart"></canvas>
-            <button class="enlarge-btn" onclick="enlargeChart('groupSummaryChart', 'wrapper-groupSummary')">⤢</button>
-        </div>
-    </div>
-    <div class="chart-container">
-        <div class="chart-wrapper" id="wrapper-combined">
-            <canvas id="combinedChart"></canvas>
-            <button class="enlarge-btn" onclick="enlargeChart('combinedChart', 'wrapper-combined')">⤢</button>
-        </div>
-        <div class="chart-wrapper" id="wrapper-growth">
-            <canvas id="growthChart"></canvas>
-            <button class="enlarge-btn" onclick="enlargeChart('growthChart', 'wrapper-growth')">⤢</button>
-        </div>
-        <div class="chart-wrapper" id="wrapper-average">
-            <canvas id="averageChart"></canvas>
-            <button class="enlarge-btn" onclick="enlargeChart('averageChart', 'wrapper-average')">⤢</button>
-        </div>
-    </div>
-    <div class="table-container">
-        <table id="transactionTable">
-            <thead>
-                <tr>
-                    <th data-column="date">Date <input type="text" placeholder="Filter Date"></th>
-                    <th data-column="name">Name <input type="text" placeholder="Filter Name"></th>
-                    <th data-column="verwendungszweck">Verwendungszweck <input type="text" placeholder="Filter Verwendungszweck"></th>
-                    <th data-column="betrag">Betrag <input type="text" placeholder="Filter Betrag"></th>
-                    <th data-column="kategorie">Kategorie <input type="text" placeholder="Filter Kategorie"></th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
+        <button id="configRulesBtn" style="margin-left: 20px;">⚙️ SETTINGS</button>
     </div>
 
-    <!-- Classification Rules Config Modal -->
+    <div class="main-tabs">
+        <button class="main-tab-btn active" data-main-tab="overview">📊 Übersicht</button>
+        <button class="main-tab-btn" data-main-tab="budget">💰 Budget</button>
+    </div>
+
+    <div id="tab-overview" class="tab-pane">
+        <div class="breadcrumbs" id="breadcrumbs"></div>
+        <div class="stats-bar" id="statsBar"></div>
+        <div class="chart-container" id="moneyFlowContainer">
+            <div class="chart-wrapper" id="wrapper-leak">
+                <canvas id="leakChart"></canvas>
+                <button class="enlarge-btn" onclick="enlargeChart('leakChart', 'wrapper-leak')">⤢</button>
+            </div>
+            <div class="chart-wrapper" id="wrapper-groupSummary">
+                <canvas id="groupSummaryChart"></canvas>
+                <button class="enlarge-btn" onclick="enlargeChart('groupSummaryChart', 'wrapper-groupSummary')">⤢</button>
+            </div>
+        </div>
+        <div class="chart-container">
+            <div class="chart-wrapper" id="wrapper-combined">
+                <canvas id="combinedChart"></canvas>
+                <button class="enlarge-btn" onclick="enlargeChart('combinedChart', 'wrapper-combined')">⤢</button>
+            </div>
+            <div class="chart-wrapper" id="wrapper-growth">
+                <canvas id="growthChart"></canvas>
+                <button class="enlarge-btn" onclick="enlargeChart('growthChart', 'wrapper-growth')">⤢</button>
+            </div>
+            <div class="chart-wrapper" id="wrapper-average">
+                <canvas id="averageChart"></canvas>
+                <button class="enlarge-btn" onclick="enlargeChart('averageChart', 'wrapper-average')">⤢</button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table id="transactionTable">
+                <thead>
+                    <tr>
+                        <th data-column="date">Date <input type="text" placeholder="Filter Date"></th>
+                        <th data-column="name">Name <input type="text" placeholder="Filter Name"></th>
+                        <th data-column="verwendungszweck">Verwendungszweck <input type="text" placeholder="Filter Verwendungszweck"></th>
+                        <th data-column="betrag">Betrag <input type="text" placeholder="Filter Betrag"></th>
+                        <th data-column="kategorie">Kategorie <input type="text" placeholder="Filter Kategorie"></th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="tab-budget" class="tab-pane" hidden>
+        <div class="breadcrumbs" id="budgetBreadcrumbs"></div>
+        <div class="budget-intro" id="budgetIntro"></div>
+        <div class="budget-list" id="budgetList"></div>
+    </div>
+
+    <!-- Settings Modal -->
     <div id="rulesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Klassifizierungsregeln</h2>
+                <h2>SETTINGS</h2>
                 <span class="close">&times;</span>
             </div>
             <div class="modal-body">
-                <p>
-                    Jede Regel ordnet Transaktionen anhand von Regex-Mustern (Name / Verwendungszweck / Bank-Kategorie)
-                    einer Kategorie und einer Gruppe zu. Die erste passende Regel (höchste Priorität) gewinnt.
-                    Ohne Treffer wird auf die Bank-Kategorie zurückgefallen.
-                </p>
-                <div id="rulesList"></div>
-                <button id="addRuleBtn" style="margin-top: 10px;">+ Regel hinzufügen</button>
-                <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #ddd;">
-                    <button id="loadDefaultRulesBtn">↺ Standardregeln laden</button>
-                    <button id="exportRulesBtn">📤 SETTING exportieren</button>
-                    <button id="importRulesBtn">📥 SETTING importieren</button>
-                    <input type="file" id="importRulesFile" accept=".json" style="display: none;">
+                <div class="settings-tabs">
+                    <button class="settings-tab-btn active" data-settings-tab="rules">📋 Regeln</button>
+                    <button class="settings-tab-btn" data-settings-tab="importexport">📤 Export / Import</button>
                 </div>
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
-                    <p style="margin: 0 0 10px 0; color: #555;">
-                        Unklassifizierte Ausgaben (aktuell gewählter Jahresfilter) als kompakte,
-                        nach Summe sortierte Händlerliste + aktuellem Regelwerk + fertigem Prompt
-                        exportieren — die Datei kann direkt einem LLM gegeben werden, das ein
-                        erweitertes SETTING zurückgibt (oben importierbar).
+
+                <div id="settingsTab-rules" class="settings-tab-pane">
+                    <p>
+                        Jede Regel ordnet Transaktionen anhand von Regex-Mustern (Name / Verwendungszweck / Bank-Kategorie)
+                        einer Kategorie und einer Gruppe zu. Die erste passende Regel (höchste Priorität) gewinnt.
+                        Ohne Treffer wird auf die Bank-Kategorie zurückgefallen.
                     </p>
-                    <button id="exportUnclassifiedBtn">🔍 Unklassifizierte Posten für LLM exportieren</button>
+                    <input type="text" id="ruleSearchInput" placeholder="🔍 Regeln durchsuchen (Label, Kategorie, Muster)...">
+                    <div id="rulesList"></div>
+                    <button id="addRuleBtn" style="margin-top: 10px;">+ Regel hinzufügen</button>
+                </div>
+
+                <div id="settingsTab-importexport" class="settings-tab-pane" hidden>
+                    <div style="padding-bottom: 20px; border-bottom: 1px solid #ddd;">
+                        <button id="loadDefaultRulesBtn">↺ Standardregeln laden</button>
+                        <button id="exportRulesBtn">📤 SETTING exportieren</button>
+                        <button id="importRulesBtn">📥 SETTING importieren</button>
+                        <input type="file" id="importRulesFile" accept=".json" style="display: none;">
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <p style="margin: 0 0 10px 0; color: #555;">
+                            Unklassifizierte Ausgaben (aktuell gewählter Jahresfilter) als kompakte,
+                            nach Summe sortierte Händlerliste + aktuellem Regelwerk + fertigem Prompt
+                            exportieren — die Datei kann direkt einem LLM gegeben werden, das ein
+                            erweitertes SETTING zurückgibt (oben importierbar).
+                        </p>
+                        <button id="exportUnclassifiedBtn">🔍 Unklassifizierte Posten für LLM exportieren</button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -118,7 +143,7 @@
         import {
             parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path,
             reset_state, calculate_classified_average, calculate_monthly_averages,
-            build_leak_report, build_group_summary, build_unclassified_report
+            build_leak_report, build_group_summary, build_unclassified_report, build_budget_report
         } from './src/data.js';
         import { render_combined_chart, render_growth_chart, render_averages_chart, render_leak_chart, render_group_summary_chart } from './src/charts.js';
         import { render_table, init_table_controls } from './src/table.js';
@@ -130,6 +155,153 @@
         let chartType = 'line';
         let ruleSet = null;
         let leakCategoryFilter = null;
+        let budgets = {};
+        let budget_current_path = [];
+
+        // ===== MAIN TAB NAVIGATION (Übersicht / Budget) =====
+        document.querySelectorAll('.main-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.main-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const target = btn.dataset.mainTab;
+                document.getElementById('tab-overview').hidden = target !== 'overview';
+                document.getElementById('tab-budget').hidden = target !== 'budget';
+                if (target === 'budget') render_budget();
+            });
+        });
+
+        function budget_key(path) { return path.join(' > '); }
+
+        function fmt_eur_plain(euros) {
+            return euros.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+        }
+
+        function load_budgets() {
+            try {
+                budgets = JSON.parse(localStorage.getItem('budgets') || '{}');
+            } catch (e) {
+                budgets = {};
+            }
+        }
+
+        function save_budgets() {
+            localStorage.setItem('budgets', JSON.stringify(budgets));
+        }
+
+        function render_budget() {
+            const introEl = document.getElementById('budgetIntro');
+            const listEl = document.getElementById('budgetList');
+
+            if (module_data.length === 0) {
+                introEl.textContent = 'Erst eine CSV laden.';
+                listEl.innerHTML = '';
+                render_budget_breadcrumbs();
+                return;
+            }
+
+            const level = budget_current_path.length;
+            const report = build_budget_report(module_data, budget_current_path, level, currentYear);
+
+            render_budget_breadcrumbs();
+
+            const parentKey = budget_key(budget_current_path);
+            const parentBudget = budget_current_path.length > 0 ? budgets[parentKey] : null;
+
+            if (budget_current_path.length > 0) {
+                const label = budget_current_path[budget_current_path.length - 1];
+                introEl.innerHTML = parentBudget != null
+                    ? `Budget für <b>${label}</b>: <b>${fmt_eur_plain(parentBudget)}</b>/Monat — verteile es unten auf die Unterkategorien.`
+                    : `Für <b>${label}</b> ist noch kein Budget gesetzt. Setz eins auf der vorherigen Ebene, oder vergib hier direkt Budgets für die Unterkategorien.`;
+            } else {
+                introEl.innerHTML = `Ø Ausgaben pro Monat für <b>${currentYear || 'alle Jahre'}</b> je Kategorie (PayPal-Doppelbuchungen bereits ausgeschlossen). Klick auf einen Namen zum Reindrillen.`;
+            }
+
+            const rowMaxDefault = parentBudget != null ? parentBudget : null;
+
+            listEl.innerHTML = report.map(r => {
+                const path = [...budget_current_path, r.category];
+                const key = budget_key(path);
+                const budgetEUR = budgets[key] != null ? budgets[key] : 0;
+                const avgEUR = r.avgMonthlyCents / 100;
+                const rowMax = rowMaxDefault != null ? Math.max(rowMaxDefault, budgetEUR) : Math.max(avgEUR * 2, budgetEUR * 1.2, 50);
+                const budgetCents = Math.round(budgetEUR * 100);
+                const pct = budgetCents > 0 ? Math.min(100, (r.avgMonthlyCents / budgetCents) * 100) : 0;
+                const overBudget = budgetCents > 0 && r.avgMonthlyCents > budgetCents;
+                const statusText = budgetCents === 0 ? '' :
+                    (overBudget
+                        ? `Über Budget um ${fmt_eur(r.avgMonthlyCents - budgetCents)}/Monat`
+                        : `Im Budget (${fmt_eur(budgetCents - r.avgMonthlyCents)} Spielraum/Monat)`);
+                return `
+                    <div class="budget-row" data-key="${key}" data-avg="${r.avgMonthlyCents}">
+                        <div class="budget-row-header">
+                            <span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.category} ▸</span>
+                            <span class="budget-avg">Ø Ist: ${fmt_eur(r.avgMonthlyCents)}/Monat</span>
+                        </div>
+                        <div class="budget-controls">
+                            <input type="range" min="0" max="${Math.ceil(rowMax)}" step="5" value="${budgetEUR}" class="budget-slider" data-key="${key}">
+                            <input type="number" min="0" step="5" value="${budgetEUR}" class="budget-number" data-key="${key}"> €
+                        </div>
+                        <div class="budget-status-bar"><div class="budget-status-fill" style="width:${pct}%; background:${overBudget ? '#e74c3c' : '#2ecc71'}"></div></div>
+                        <div class="budget-status-text" style="color:${overBudget ? '#e74c3c' : '#555'}">${statusText}</div>
+                    </div>
+                `;
+            }).join('') || '<p style="color:#999;">Keine Ausgaben in diesem Zeitraum/dieser Kategorie.</p>';
+
+            listEl.querySelectorAll('.budget-cat-name').forEach(el => {
+                el.addEventListener('click', () => {
+                    budget_current_path = JSON.parse(el.dataset.path);
+                    render_budget();
+                });
+            });
+            listEl.querySelectorAll('.budget-slider, .budget-number').forEach(el => {
+                el.addEventListener('input', (e) => {
+                    sync_budget_row(e.target.dataset.key, parseFloat(e.target.value) || 0);
+                });
+            });
+        }
+
+        // Lightweight update for one row (slider <-> number sync, status bar/text,
+        // parent-allocation summary) without rebuilding the whole list on every
+        // slider tick.
+        function sync_budget_row(key, value) {
+            budgets[key] = value;
+            save_budgets();
+            const row = document.querySelector(`.budget-row[data-key="${CSS.escape(key)}"]`);
+            if (!row) return;
+            const avgCents = parseInt(row.dataset.avg, 10);
+            row.querySelector('.budget-slider').value = value;
+            row.querySelector('.budget-number').value = value;
+            const budgetCents = Math.round(value * 100);
+            const pct = budgetCents > 0 ? Math.min(100, (avgCents / budgetCents) * 100) : 0;
+            const overBudget = budgetCents > 0 && avgCents > budgetCents;
+            const fill = row.querySelector('.budget-status-fill');
+            fill.style.width = pct + '%';
+            fill.style.background = overBudget ? '#e74c3c' : '#2ecc71';
+            const text = row.querySelector('.budget-status-text');
+            text.style.color = overBudget ? '#e74c3c' : '#555';
+            text.textContent = budgetCents === 0 ? '' :
+                (overBudget
+                    ? `Über Budget um ${fmt_eur(avgCents - budgetCents)}/Monat`
+                    : `Im Budget (${fmt_eur(budgetCents - avgCents)} Spielraum/Monat)`);
+        }
+
+        function render_budget_breadcrumbs() {
+            const el = document.getElementById('budgetBreadcrumbs');
+            let html = '<span data-level="-1">All Categories</span>';
+            budget_current_path.forEach((cat, idx) => {
+                html += ' > <span data-level="' + idx + '">' + cat + '</span>';
+            });
+            el.innerHTML = html;
+            el.querySelectorAll('span[data-level]').forEach(span => {
+                const level = parseInt(span.getAttribute('data-level'));
+                if (level < budget_current_path.length - 1) {
+                    span.addEventListener('click', () => {
+                        budget_current_path = level === -1 ? [] : budget_current_path.slice(0, level + 1);
+                        render_budget();
+                    });
+                }
+            });
+        }
 
         function group_colors() {
             const map = {};
@@ -301,6 +473,7 @@
                 tableControlsInitialized = false;
                 leakCategoryFilter = null;
                 render_all();
+                render_budget();
             };
             reader.readAsText(file);
         }
@@ -321,6 +494,7 @@
                 tableControlsInitialized = false;
                 leakCategoryFilter = null;
                 render_all();
+                render_budget();
             } catch (error) {
                 console.error('Error loading sample data:', error);
                 alert('Failed to load sample data');
@@ -399,6 +573,7 @@
             leakCategoryFilter = null;
             localStorage.setItem('currentPath', JSON.stringify([]));
             render_all();
+            render_budget();
         }
 
         // ===== CLASSIFICATION RULES ("SETTING") LOGIC =====
@@ -422,6 +597,24 @@
         configBtn.addEventListener('click', () => {
             renderRulesList();
             modal.style.display = 'block';
+        });
+
+        // Settings modal sub-tabs (Regeln / Export-Import)
+        document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const target = btn.dataset.settingsTab;
+                document.getElementById('settingsTab-rules').hidden = target !== 'rules';
+                document.getElementById('settingsTab-importexport').hidden = target !== 'importexport';
+            });
+        });
+
+        document.getElementById('ruleSearchInput').addEventListener('input', (e) => {
+            const q = e.target.value.toLowerCase().trim();
+            rulesListEl.querySelectorAll('.rule-item').forEach(item => {
+                item.style.display = item.dataset.search.includes(q) ? '' : 'none';
+            });
         });
 
         closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
@@ -464,32 +657,43 @@
 
             [...rules].sort((a, b) => (b.priority || 0) - (a.priority || 0)).forEach((rule) => {
                 const idx = rules.indexOf(rule);
-                const ruleDiv = document.createElement('div');
-                ruleDiv.className = 'rule-item';
-                ruleDiv.innerHTML = `
-                    <div class="rule-header">
-                        <input type="text" placeholder="Label (z.B. 'Miete', 'Steam')" value="${rule.label}" data-idx="${idx}" data-field="label">
-                        <button class="delete-rule" data-idx="${idx}">🗑️</button>
+                const groupMeta = (ruleSet.groups || []).find(g => g.id === rule.group) || { label: rule.group, color: '#95a5a6' };
+                const searchText = [rule.label, rule.category, rule.namePattern, rule.verwendungPattern, rule.kategoriePattern, groupMeta.label]
+                    .filter(Boolean).join(' ').toLowerCase();
+                const ruleDetails = document.createElement('details');
+                ruleDetails.className = 'rule-item';
+                ruleDetails.dataset.search = searchText;
+                ruleDetails.innerHTML = `
+                    <summary>
+                        <span class="rule-summary-label">${rule.label || '(ohne Label)'}</span>
+                        <span class="rule-summary-badge" style="background:${groupMeta.color}">${groupMeta.label}</span>
+                        <span class="rule-summary-priority">Prio ${rule.priority || 0}</span>
+                    </summary>
+                    <div class="rule-body">
+                        <div class="rule-header">
+                            <input type="text" placeholder="Label (z.B. 'Miete', 'Steam')" value="${rule.label}" data-idx="${idx}" data-field="label">
+                            <button class="delete-rule" data-idx="${idx}">🗑️</button>
+                        </div>
+                        <label>Kategorie (Anzeige im Dashboard):</label>
+                        <input type="text" placeholder="z.B. Gaming" value="${rule.category || ''}" data-idx="${idx}" data-field="category">
+                        <label>Gruppe:</label>
+                        <select data-idx="${idx}" data-field="group">${group_options_html(rule.group)}</select>
+                        <label>Name-Muster (Regex):</label>
+                        <input type="text" placeholder="z.B. Amazon|Netflix|Spotify" value="${rule.namePattern || ''}" data-idx="${idx}" data-field="namePattern">
+                        <label>Verwendungszweck-Muster (Regex):</label>
+                        <input type="text" placeholder="z.B. Miete|Abonnement" value="${rule.verwendungPattern || ''}" data-idx="${idx}" data-field="verwendungPattern">
+                        <label>Bank-Kategorie-Muster (Regex, optional):</label>
+                        <input type="text" placeholder="z.B. Paypal" value="${rule.kategoriePattern || ''}" data-idx="${idx}" data-field="kategoriePattern">
+                        <label>Match-Typ:</label>
+                        <select data-idx="${idx}" data-field="matchType">
+                            <option value="or" ${rule.matchType === 'or' ? 'selected' : ''}>OR (irgendein Muster trifft)</option>
+                            <option value="and" ${rule.matchType === 'and' ? 'selected' : ''}>AND (alle vorhandenen Muster müssen treffen)</option>
+                        </select>
+                        <label>Priorität (höher = wird zuerst geprüft):</label>
+                        <input type="number" value="${rule.priority || 0}" data-idx="${idx}" data-field="priority">
                     </div>
-                    <label>Kategorie (Anzeige im Dashboard):</label>
-                    <input type="text" placeholder="z.B. Gaming" value="${rule.category || ''}" data-idx="${idx}" data-field="category">
-                    <label>Gruppe:</label>
-                    <select data-idx="${idx}" data-field="group">${group_options_html(rule.group)}</select>
-                    <label>Name-Muster (Regex):</label>
-                    <input type="text" placeholder="z.B. Amazon|Netflix|Spotify" value="${rule.namePattern || ''}" data-idx="${idx}" data-field="namePattern">
-                    <label>Verwendungszweck-Muster (Regex):</label>
-                    <input type="text" placeholder="z.B. Miete|Abonnement" value="${rule.verwendungPattern || ''}" data-idx="${idx}" data-field="verwendungPattern">
-                    <label>Bank-Kategorie-Muster (Regex, optional):</label>
-                    <input type="text" placeholder="z.B. Paypal" value="${rule.kategoriePattern || ''}" data-idx="${idx}" data-field="kategoriePattern">
-                    <label>Match-Typ:</label>
-                    <select data-idx="${idx}" data-field="matchType">
-                        <option value="or" ${rule.matchType === 'or' ? 'selected' : ''}>OR (irgendein Muster trifft)</option>
-                        <option value="and" ${rule.matchType === 'and' ? 'selected' : ''}>AND (alle vorhandenen Muster müssen treffen)</option>
-                    </select>
-                    <label>Priorität (höher = wird zuerst geprüft):</label>
-                    <input type="number" value="${rule.priority || 0}" data-idx="${idx}" data-field="priority">
                 `;
-                rulesListEl.appendChild(ruleDiv);
+                rulesListEl.appendChild(ruleDetails);
             });
 
             // Add event listeners for inputs
@@ -602,6 +806,7 @@
             const defaultRuleSet = await load_default_rule_set();
             const stored = get_stored_rule_set();
             ruleSet = stored || JSON.parse(JSON.stringify(defaultRuleSet));
+            load_budgets();
 
             const storedCsv = localStorage.getItem('csvData');
             if (storedCsv) {
@@ -617,6 +822,7 @@
                 const selectedYear = localStorage.getItem('selectedYear');
                 currentYear = selectedYear || '';
                 render_all();
+                render_budget();
             }
         });
     </script>

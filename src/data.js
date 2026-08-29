@@ -232,6 +232,37 @@ export function build_unclassified_report(rows) {
     .sort((a, b) => b.totalEUR - a.totalEUR);
 }
 
+// For the Budget tab: average monthly spend per direct child category under
+// `path`, restricted to a single year (or all years if `year` is falsy).
+// Uses the same bank-Kategorie hierarchy as the main drill-down (not the
+// rule-engine categories), and excludes internal-transfer rows so PayPal
+// funding/settlement legs never inflate the average. The average divides by
+// the number of distinct months that actually occur within the selected
+// scope, so a partial current year isn't divided by 12.
+export function build_budget_report(rows, path, level, year) {
+  const yearRows = year ? rows.filter(r => r.date.getFullYear() == year) : rows;
+  const monthsSet = new Set(yearRows.map(r => `${r.date.getFullYear()}-${r.date.getMonth()}`));
+  const monthCount = monthsSet.size || 1;
+
+  const filtered = yearRows.filter(r =>
+    r.in_out === 'out' && is_real_cashflow(r) && path.every((p, i) => r.categories[i] === p)
+  );
+
+  const byCat = {};
+  filtered.forEach(r => {
+    const cat = r.categories[level] || 'Other';
+    byCat[cat] = (byCat[cat] || 0) + Math.abs(r.betrag_cents);
+  });
+
+  return Object.entries(byCat)
+    .map(([category, totalCents]) => ({
+      category,
+      totalCents,
+      avgMonthlyCents: Math.round(totalCents / monthCount)
+    }))
+    .sort((a, b) => b.avgMonthlyCents - a.avgMonthlyCents);
+}
+
 export function reset_state() { current_path = []; localStorage.removeItem('currentPath'); }
 
 function round2(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }

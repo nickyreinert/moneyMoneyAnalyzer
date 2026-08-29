@@ -10,10 +10,28 @@ Usage:
 
 - Open `index.html` via a small static server (or `file://` may also work if browser allows modules).
 - Load your CSV using the "Load CSV" button.
+- Two tabs: **📊 Übersicht** (the money-flow dashboard: charts, drill-down,
+  transaction table) and **💰 Budget** (set a monthly budget per category,
+  drill down and distribute a parent's budget across its subcategories with
+  sliders, see at a glance whether you're over or under).
 - Use year buttons and drill into categories by clicking bars.
-- Click "⚙️ Klassifizierungsregeln" to review/edit the rules that assign
-  transactions to categories, or to import a rule set someone (or an LLM,
-  see below) generated for you.
+- Click "⚙️ SETTINGS" to review/edit the rules that assign transactions to
+  categories (tab "Regeln", searchable, one rule per collapsed row) or to
+  import/export a rule set (tab "Export / Import"), including one someone
+  (or an LLM, see below) generated for you.
+
+### Budget tab
+
+Drilling here follows the bank's own Kategorie hierarchy (the same
+`AUSGABEN - Wohnen - Miete` tree used in the main drill-down), not the
+rule-engine categories — budgets are naturally hierarchical, so a parent's
+euro amount can be distributed across its children. Each row shows the
+average monthly spend for the selected year (PayPal double-counting
+excluded, same as everywhere else) next to a slider/number input for the
+budget and a status bar (green = within budget, red = over). Setting a
+budget on a parent category caps its children's sliders to that amount and
+shows how much is still unallocated. Budgets are stored in `localStorage`
+only.
 
 Files:
 - `index.html` - UI and module loader
