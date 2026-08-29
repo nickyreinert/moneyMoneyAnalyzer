@@ -1,27 +1,39 @@
 // --- charts.js ---
 // Chart.js loaded via UMD in index.html, available as global Chart
+import { t } from './i18n.js';
 let combined_chart = null;
 
-export function get_color(cat) { 
-  const colors = [
-    '#e74c3c', // red
-    '#3498db', // blue
-    '#f39c12', // orange
-    '#2ecc71', // green
-    '#9b59b6', // purple
-    '#1abc9c', // turquoise
-    '#e67e22', // dark orange
-    '#34495e', // dark blue-gray
-    '#f1c40f', // yellow
-    '#16a085', // dark turquoise
-    '#c0392b', // dark red
-    '#d35400', // burnt orange
-    '#8e44ad', // dark purple
-    '#27ae60', // dark green
-    '#2980b9', // darker blue
-    '#95a5a6'  // gray
-  ]; 
-  return colors[cat.length % colors.length]; 
+const CHART_COLORS = [
+  '#e74c3c', // red
+  '#3498db', // blue
+  '#f39c12', // orange
+  '#2ecc71', // green
+  '#9b59b6', // purple
+  '#1abc9c', // turquoise
+  '#e67e22', // dark orange
+  '#34495e', // dark blue-gray
+  '#f1c40f', // yellow
+  '#16a085', // dark turquoise
+  '#c0392b', // dark red
+  '#d35400', // burnt orange
+  '#8e44ad', // dark purple
+  '#27ae60', // dark green
+  '#2980b9', // darker blue
+  '#95a5a6'  // gray
+];
+
+// Assigns each distinct category name its own color (in order of first use)
+// instead of deriving it from string length, which collided constantly
+// (many differently-named categories share the same length % palette-size).
+const categoryColorMap = new Map();
+let nextColorIndex = 0;
+
+export function get_color(cat) {
+  if (!categoryColorMap.has(cat)) {
+    categoryColorMap.set(cat, CHART_COLORS[nextColorIndex % CHART_COLORS.length]);
+    nextColorIndex++;
+  }
+  return categoryColorMap.get(cat);
 }
 
 export function render_combined_chart(outData, inData, canvasId, onBarClick, recurringAvgData = null, labelFor = null, colorFor = null) {
@@ -49,7 +61,7 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
   // make the line visually dominant and ensure it renders after bars
   const lineDataset = {
     type: 'line',
-    label: 'Income',
+    label: t('charts.income'),
     data: keys.map(k => (inData[k] || 0) / 100),
     borderColor: '#2ecc71',
     backgroundColor: 'rgba(46,204,113,0.1)',
@@ -74,7 +86,7 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
     console.log('Recurring Avg Data (should be in euros, e.g. 151):', recurringValues[0]);
     const recurringAvgDataset = {
       type: 'line',
-      label: 'Ø Fixkosten (Monat)',
+      label: t('charts.avgFixed'),
       data: recurringValues,
       borderColor: '#e74c3c',
       backgroundColor: 'rgba(231,76,60,0.1)',
@@ -150,7 +162,7 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
       scales: {
         x: { stacked: true },
         y: { stacked: true, beginAtZero: true, max: maxVal },
-        y1: { position: 'right', beginAtZero: true, max: maxInVal, grid: { drawOnChartArea: false }, title: { display: true, text: 'Income' } }
+        y1: { position: 'right', beginAtZero: true, max: maxInVal, grid: { drawOnChartArea: false }, title: { display: true, text: t('charts.income') } }
       },
       onClick: (evt, elements) => {
         if (!elements || !elements.length) return;
@@ -188,7 +200,7 @@ export function render_averages_chart(avgData, canvasId) {
     const datasets = [
         {
             type: 'bar',
-            label: 'Avg Income',
+            label: t('charts.avgIncome'),
             data: monthlyIn,
             backgroundColor: 'rgba(46,204,113,0.7)', // Green
             order: 2,
@@ -196,7 +208,7 @@ export function render_averages_chart(avgData, canvasId) {
         },
         {
             type: 'bar',
-            label: 'Avg Outgoing',
+            label: t('charts.avgOutgoing'),
             data: monthlyOut,
             backgroundColor: 'rgba(231,76,60,0.7)', // Red
             order: 3,
@@ -204,7 +216,7 @@ export function render_averages_chart(avgData, canvasId) {
         },
         {
             type: 'line',
-            label: 'Total Avg Income',
+            label: t('charts.totalAvgIncome'),
             data: Array(12).fill(globalIn),
             borderColor: '#2ecc71',
             borderWidth: 2,
@@ -215,7 +227,7 @@ export function render_averages_chart(avgData, canvasId) {
         },
         {
             type: 'line',
-            label: 'Total Avg Outgoing',
+            label: t('charts.totalAvgOutgoing'),
             data: Array(12).fill(globalOut),
             borderColor: '#e74c3c',
             borderWidth: 2,
@@ -259,7 +271,7 @@ export function render_averages_chart(avgData, canvasId) {
                 },
                 title: {
                     display: true,
-                    text: 'Average Monthly Metrics'
+                    text: t('charts.averageMonthlyMetrics')
                 },
                  legend: {
                     position: 'top',
@@ -283,7 +295,7 @@ export function render_leak_chart(leakReport, groupColors, canvasId, onBarClick,
   if (leak_chart) leak_chart.destroy();
   leak_chart = new Chart(document.getElementById(canvasId), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Ausgaben', data: values, backgroundColor: colors }] },
+    data: { labels, datasets: [{ label: t('charts.expenses'), data: values, backgroundColor: colors }] },
     options: {
       indexAxis: 'y',
       responsive: true,
@@ -297,7 +309,7 @@ export function render_leak_chart(leakReport, groupColors, canvasId, onBarClick,
       },
       plugins: {
         legend: { display: false },
-        title: { display: true, text: 'Wo fließt das Geld hin? (Top Kategorien)' },
+        title: { display: true, text: t('charts.moneyLeaks') },
         tooltip: { callbacks: { label: (ctx) => (ctx.parsed.x).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }) } }
       }
     }
@@ -329,7 +341,7 @@ export function render_group_summary_chart(summary, ruleSetGroups, canvasId) {
       plugins: {
         title: {
           display: true,
-          text: `Einnahmen ${(summary.totalIncome / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}  →  Netto ${netLabel}`
+          text: t('charts.incomeNetTitle', { income: (summary.totalIncome / 100).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' }), net: netLabel })
         },
         tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${(ctx.parsed).toLocaleString('de-DE', { style: 'currency', currency: 'EUR' })}` } },
         legend: { position: 'bottom' }
@@ -408,17 +420,17 @@ export function render_growth_chart(outData, canvasId, mode = 'mom', chartType =
       maintainAspectRatio: false,
       scales: {
         x: { 
-          title: { display: true, text: 'Month' },
+          title: { display: true, text: t('charts.month') },
           stacked: false
         },
         y: { 
-          title: { display: true, text: 'Growth Rate (%)' },
+          title: { display: true, text: t('charts.growthRatePercent') },
           beginAtZero: false,
           stacked: false
         }
       },
       plugins: {
-        title: { display: true, text: mode === 'mom' ? 'Month-over-Month Growth (%)' : 'Year-over-Year Growth (%)' },
+        title: { display: true, text: mode === 'mom' ? t('charts.momTitle') : t('charts.yoyTitle') },
         tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(1)}%` } }
       }
     }

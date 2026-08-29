@@ -110,3 +110,32 @@ h1 { margin: 0; padding: 10px; }
 .budget-status-bar { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; }
 .budget-status-fill { height: 100%; transition: width 0.15s; }
 .budget-status-text { font-size: 0.85em; margin-top: 4px; }
+
+/* Footer (shared across the nickyreinert project family, see src/footer.js) */
+.app-footer {
+    margin-top: auto;
+    padding: 14px 10px;
+    text-align: center;
+    font-size: 0.85em;
+    color: #777;
+    background: #f9f9f9;
+    border-top: 1px solid #ddd;
+}
+.app-footer a { color: #0066cc; text-decoration: none; margin: 0 2px; }
+.app-footer a:hover { text-decoration: underline; }
+
+/* Languages settings tab */
+#settingsTab-languages h3 { margin-top: 0; }
+#settingsTab-languages input[type="radio"] { margin-right: 8px; }
+
+/* CSV import settings tab */
+#settingsTab-csvimport h3 { margin-top: 20px; margin-bottom: 5px; }
+#settingsTab-csvimport .csv-field { margin-bottom: 12px; }
+#settingsTab-csvimport .csv-field label { display: block; font-weight: bold; font-size: 0.9em; color: #333; margin-bottom: 4px; }
+#settingsTab-csvimport .csv-field input[type="text"],
+#settingsTab-csvimport .csv-field select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+#settingsTab-csvimport .csv-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 15px; }
+@media (max-width: 600px) {
+    #settingsTab-csvimport .csv-grid { grid-template-columns: 1fr; }
+}
+

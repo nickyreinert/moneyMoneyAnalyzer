@@ -9,23 +9,22 @@
 </head>
 <body>
     <div class="filters">
-        <h1 style="margin-right: 20px; font-size: 1.2em;">MoneyMoney Analyzer</h1>
-        <input type="file" id="csvFile" accept=".csv">
-        <button id="loadSampleBtn">Load Sample Data</button>
+        <h1 style="margin-right: 20px; font-size: 1.2em;" data-i18n="app.title">MoneyMoney Analyzer</h1>
+        <button id="loadSampleBtn" data-i18n="filters.loadSample">Load Sample Data</button>
         <div id="yearButtons"></div>
-        <button id="resetDrillBtn">Reset Drill</button>
-        <span style="margin-left: 20px;">Growth Rate:</span>
-        <label><input type="radio" name="growthMode" value="mom" checked> MoM</label>
-        <label><input type="radio" name="growthMode" value="yoy"> YoY</label>
-        <span style="margin-left: 15px;">Chart:</span>
-        <label><input type="radio" name="chartType" value="line" checked> Line</label>
-        <label><input type="radio" name="chartType" value="bar"> Bar</label>
-        <button id="configRulesBtn" style="margin-left: 20px;">⚙️ SETTINGS</button>
+        <button id="resetDrillBtn" data-i18n="filters.resetDrill">Reset Drill</button>
+        <span style="margin-left: 20px;" data-i18n="filters.growthRate">Growth Rate:</span>
+        <label><input type="radio" name="growthMode" value="mom" checked> <span data-i18n="filters.mom">MoM</span></label>
+        <label><input type="radio" name="growthMode" value="yoy"> <span data-i18n="filters.yoy">YoY</span></label>
+        <span style="margin-left: 15px;" data-i18n="filters.chart">Chart:</span>
+        <label><input type="radio" name="chartType" value="line" checked> <span data-i18n="filters.line">Line</span></label>
+        <label><input type="radio" name="chartType" value="bar"> <span data-i18n="filters.bar">Bar</span></label>
+        <button id="configRulesBtn" style="margin-left: 20px;" data-i18n="filters.settings">⚙️ SETTINGS</button>
     </div>
 
     <div class="main-tabs">
-        <button class="main-tab-btn active" data-main-tab="overview">📊 Übersicht</button>
-        <button class="main-tab-btn" data-main-tab="budget">💰 Budget</button>
+        <button class="main-tab-btn active" data-main-tab="overview" data-i18n="mainTabs.overview">📊 Übersicht</button>
+        <button class="main-tab-btn" data-main-tab="budget" data-i18n="mainTabs.budget">💰 Budget</button>
     </div>
 
     <div id="tab-overview" class="tab-pane">
@@ -59,11 +58,11 @@
             <table id="transactionTable">
                 <thead>
                     <tr>
-                        <th data-column="date">Date <input type="text" placeholder="Filter Date"></th>
-                        <th data-column="name">Name <input type="text" placeholder="Filter Name"></th>
-                        <th data-column="verwendungszweck">Verwendungszweck <input type="text" placeholder="Filter Verwendungszweck"></th>
-                        <th data-column="betrag">Betrag <input type="text" placeholder="Filter Betrag"></th>
-                        <th data-column="kategorie">Kategorie <input type="text" placeholder="Filter Kategorie"></th>
+                        <th data-column="date"><span data-i18n="table.date">Date</span> <input type="text" data-i18n-placeholder="table.filterDate" placeholder="Filter Date"></th>
+                        <th data-column="name"><span data-i18n="table.name">Name</span> <input type="text" data-i18n-placeholder="table.filterName" placeholder="Filter Name"></th>
+                        <th data-column="verwendungszweck"><span data-i18n="table.verwendungszweck">Verwendungszweck</span> <input type="text" data-i18n-placeholder="table.filterVerwendungszweck" placeholder="Filter Verwendungszweck"></th>
+                        <th data-column="betrag"><span data-i18n="table.betrag">Betrag</span> <input type="text" data-i18n-placeholder="table.filterBetrag" placeholder="Filter Betrag"></th>
+                        <th data-column="kategorie"><span data-i18n="table.kategorie">Kategorie</span> <input type="text" data-i18n-placeholder="table.filterKategorie" placeholder="Filter Kategorie"></th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -81,47 +80,115 @@
     <div id="rulesModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>SETTINGS</h2>
+                <h2 data-i18n="modal.settingsTitle">SETTINGS</h2>
                 <span class="close">&times;</span>
             </div>
             <div class="modal-body">
                 <div class="settings-tabs">
-                    <button class="settings-tab-btn active" data-settings-tab="rules">📋 Regeln</button>
-                    <button class="settings-tab-btn" data-settings-tab="importexport">📤 Export / Import</button>
+                    <button class="settings-tab-btn active" data-settings-tab="rules" data-i18n="settingsTabs.rules">📋 Regeln</button>
+                    <button class="settings-tab-btn" data-settings-tab="importexport" data-i18n="settingsTabs.importexport">📤 Export / Import</button>
+                    <button class="settings-tab-btn" data-settings-tab="languages" data-i18n="settingsTabs.languages">🌐 Sprache</button>
+                    <button class="settings-tab-btn" data-settings-tab="csvimport" data-i18n="settingsTabs.csvimport">📄 CSV-Import</button>
                 </div>
 
                 <div id="settingsTab-rules" class="settings-tab-pane">
-                    <p>
+                    <p data-i18n="rules.intro">
                         Jede Regel ordnet Transaktionen anhand von Regex-Mustern (Name / Verwendungszweck / Bank-Kategorie)
                         einer Kategorie und einer Gruppe zu. Die erste passende Regel (höchste Priorität) gewinnt.
                         Ohne Treffer wird auf die Bank-Kategorie zurückgefallen.
                     </p>
-                    <input type="text" id="ruleSearchInput" placeholder="🔍 Regeln durchsuchen (Label, Kategorie, Muster)...">
+                    <input type="text" id="ruleSearchInput" data-i18n-placeholder="rules.searchPlaceholder" placeholder="🔍 Regeln durchsuchen (Label, Kategorie, Muster)...">
                     <div id="rulesList"></div>
-                    <button id="addRuleBtn" style="margin-top: 10px;">+ Regel hinzufügen</button>
+                    <button id="addRuleBtn" style="margin-top: 10px;" data-i18n="rules.addRule">+ Regel hinzufügen</button>
                 </div>
 
                 <div id="settingsTab-importexport" class="settings-tab-pane" hidden>
                     <div style="padding-bottom: 20px; border-bottom: 1px solid #ddd;">
-                        <button id="loadDefaultRulesBtn">↺ Standardregeln laden</button>
-                        <button id="exportRulesBtn">📤 SETTING exportieren</button>
-                        <button id="importRulesBtn">📥 SETTING importieren</button>
+                        <button id="loadDefaultRulesBtn" data-i18n="importexport.loadDefault">↺ Standardregeln laden</button>
+                        <button id="exportRulesBtn" data-i18n="importexport.export">📤 SETTING exportieren</button>
+                        <button id="importRulesBtn" data-i18n="importexport.import">📥 SETTING importieren</button>
                         <input type="file" id="importRulesFile" accept=".json" style="display: none;">
                     </div>
                     <div style="margin-top: 15px;">
-                        <p style="margin: 0 0 10px 0; color: #555;">
+                        <p style="margin: 0 0 10px 0; color: #555;" data-i18n="importexport.unclassifiedIntro">
                             Unklassifizierte Ausgaben (aktuell gewählter Jahresfilter) als kompakte,
                             nach Summe sortierte Händlerliste + aktuellem Regelwerk + fertigem Prompt
                             exportieren — die Datei kann direkt einem LLM gegeben werden, das ein
                             erweitertes SETTING zurückgibt (oben importierbar).
                         </p>
-                        <button id="exportUnclassifiedBtn">🔍 Unklassifizierte Posten für LLM exportieren</button>
+                        <button id="exportUnclassifiedBtn" data-i18n="importexport.exportUnclassified">🔍 Unklassifizierte Posten für LLM exportieren</button>
+                    </div>
+                </div>
+
+                <div id="settingsTab-languages" class="settings-tab-pane" hidden>
+                    <h3 data-i18n="languages.title">App-Sprache</h3>
+                    <p data-i18n="languages.intro">Wähle die Sprache der Benutzeroberfläche. Deine Regeln/Kategorien-Bezeichnungen ändern sich dadurch nicht.</p>
+                    <label style="display:block; margin-bottom:10px;"><input type="radio" name="appLanguage" value="de"> <span data-i18n="languages.de">Deutsch</span></label>
+                    <label style="display:block;"><input type="radio" name="appLanguage" value="en"> <span data-i18n="languages.en">Englisch</span></label>
+                </div>
+
+                <div id="settingsTab-csvimport" class="settings-tab-pane" hidden>
+                    <p data-i18n="csv.intro">Lade hier deine CSV-Datei und stelle bei Bedarf das Format ein, falls dein Export nicht dem MoneyMoney-Standard entspricht.</p>
+                    <div class="csv-field">
+                        <label data-i18n="csv.pickFile">Datei auswählen</label>
+                        <input type="file" id="csvFile" accept=".csv">
+                    </div>
+                    <div class="csv-grid">
+                        <div class="csv-field">
+                            <label data-i18n="csv.delimiterLabel">Trennzeichen (Spalten):</label>
+                            <select id="csvDelimiter">
+                                <option value=";">; (Semikolon)</option>
+                                <option value=",">, (Komma)</option>
+                                <option value="tab">Tab</option>
+                                <option value="|">| (Pipe)</option>
+                            </select>
+                        </div>
+                        <div class="csv-field">
+                            <label data-i18n="csv.lineBreakLabel">Zeilenumbruch:</label>
+                            <select id="csvLineBreak">
+                                <option value="auto" data-i18n="csv.lineBreakAuto">Automatisch erkennen</option>
+                                <option value="lf">\n (Unix/Mac)</option>
+                                <option value="crlf">\r\n (Windows)</option>
+                            </select>
+                        </div>
+                        <div class="csv-field">
+                            <label data-i18n="csv.encodingLabel">Zeichenkodierung:</label>
+                            <select id="csvEncoding">
+                                <option value="utf-8">UTF-8</option>
+                                <option value="iso-8859-1">ISO-8859-1 (Latin-1)</option>
+                                <option value="windows-1252">Windows-1252</option>
+                            </select>
+                        </div>
+                        <div class="csv-field">
+                            <label data-i18n="csv.decimalSeparatorLabel">Dezimaltrennzeichen:</label>
+                            <select id="csvDecimalSeparator">
+                                <option value=",">, (Komma)</option>
+                                <option value=".">. (Punkt)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="csv-field">
+                        <label><input type="checkbox" id="csvHasHeader" checked> <span data-i18n="csv.hasHeaderLabel">Erste Zeile enthält Spaltennamen</span></label>
+                    </div>
+                    <h3 data-i18n="csv.columnMappingTitle">Spaltenzuordnung</h3>
+                    <p style="color:#555; font-size:0.9em;" data-i18n="csv.columnMappingHint">Spaltenname (aus Kopfzeile) oder Spaltenindex (0, 1, 2, ...) angeben.</p>
+                    <div class="csv-grid">
+                        <div class="csv-field"><label data-i18n="csv.colDate">Datum</label><input type="text" id="csvColDate"></div>
+                        <div class="csv-field"><label data-i18n="csv.colName">Name</label><input type="text" id="csvColName"></div>
+                        <div class="csv-field"><label data-i18n="csv.colDescription">Verwendungszweck / Beschreibung</label><input type="text" id="csvColVerwendungszweck"></div>
+                        <div class="csv-field"><label data-i18n="csv.colAmount">Betrag</label><input type="text" id="csvColBetrag"></div>
+                        <div class="csv-field"><label data-i18n="csv.colCategory">Kategorie (optional)</label><input type="text" id="csvColKategorie"></div>
+                    </div>
+                    <div style="margin-top:15px;">
+                        <button id="csvSaveConfigBtn" class="primary" data-i18n="csv.saveConfig">CSV-Einstellungen speichern</button>
+                        <button id="csvResetDefaultsBtn" data-i18n="csv.resetDefaults">↺ Standardwerte laden</button>
+                        <span id="csvSavedNote" style="display:none; color:#2ecc71; margin-left:10px;" data-i18n="csv.savedNote">Einstellungen gespeichert. Beim nächsten Laden einer Datei werden sie verwendet.</span>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button id="saveRulesBtn" class="primary">Speichern</button>
-                <button id="cancelRulesBtn">Abbrechen</button>
+                <button id="saveRulesBtn" class="primary" data-i18n="modal.save">Speichern</button>
+                <button id="cancelRulesBtn" data-i18n="modal.cancel">Abbrechen</button>
             </div>
         </div>
     </div>
@@ -139,6 +206,8 @@
         </div>
     </div>
 
+    <footer id="appFooter" class="app-footer"></footer>
+
     <script type="module">
         import {
             parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path,
@@ -149,6 +218,9 @@
         import { render_combined_chart, render_growth_chart, render_averages_chart, render_leak_chart, render_group_summary_chart } from './src/charts.js';
         import { render_table, init_table_controls } from './src/table.js';
         import { load_default_rule_set, get_stored_rule_set, save_rule_set, classify_all } from './src/rules.js';
+        import { get_language, set_language, apply_static_i18n, t } from './src/i18n.js';
+        import { get_csv_config, save_csv_config, default_csv_config } from './src/csv_config.js';
+        import { load_footer } from './src/footer.js';
 
         let currentYear = '';
         let tableControlsInitialized = false;
@@ -194,7 +266,7 @@
             const listEl = document.getElementById('budgetList');
 
             if (module_data.length === 0) {
-                introEl.textContent = 'Erst eine CSV laden.';
+                introEl.textContent = t('budget.needCsv');
                 listEl.innerHTML = '';
                 render_budget_breadcrumbs();
                 return;
@@ -211,10 +283,18 @@
             if (budget_current_path.length > 0) {
                 const label = path_label(budget_current_path, budget_current_path.length - 1);
                 introEl.innerHTML = parentBudget != null
-                    ? `Budget für <b>${label}</b>: <b>${fmt_eur_plain(parentBudget)}</b>/Monat — verteile es unten auf die Unterkategorien.`
-                    : `Für <b>${label}</b> ist noch kein Budget gesetzt. Setz eins auf der vorherigen Ebene, oder vergib hier direkt Budgets für die Unterkategorien.`;
+                    ? t('budget.intro.withPath', { label, amount: fmt_eur_plain(parentBudget) })
+                    : t('budget.intro.noBudget', { label });
             } else {
+<<<<<<< HEAD
+<<<<<<< HEAD
+                introEl.innerHTML = t('budget.intro.root', { year: currentYear || t('budget.allYears') });
+=======
                 introEl.innerHTML = `Ø Ausgaben pro Monat für <b>${currentYear || 'alle Jahre'}</b> — PayPal ist nur eine Zahlungsart und taucht hier nirgends als eigene Kategorie auf, alles läuft in die tatsächliche Ausgabenkategorie ein. Klick auf "Ausgaben" zum Reindrillen.`;
+>>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
+=======
+                introEl.innerHTML = `Ø Ausgaben pro Monat für <b>${currentYear || 'alle Jahre'}</b> — PayPal ist nur eine Zahlungsart und taucht hier nirgends als eigene Kategorie auf, alles läuft in die tatsächliche Ausgabenkategorie ein. Klick auf "Ausgaben" zum Reindrillen.`;
+>>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
             }
 
             const rowMaxDefault = parentBudget != null ? parentBudget : null;
@@ -230,16 +310,37 @@
                 const overBudget = budgetCents > 0 && r.avgMonthlyCents > budgetCents;
                 const statusText = budgetCents === 0 ? '' :
                     (overBudget
+<<<<<<< HEAD
+                        ? t('budget.overBudget', { amount: fmt_eur(r.avgMonthlyCents - budgetCents) })
+                        : t('budget.inBudget', { amount: fmt_eur(budgetCents - r.avgMonthlyCents) }));
+=======
                         ? `Über Budget um ${fmt_eur(r.avgMonthlyCents - budgetCents)}/Monat`
                         : `Im Budget (${fmt_eur(budgetCents - r.avgMonthlyCents)} Spielraum/Monat)`);
+<<<<<<< HEAD
                 const nameHtml = drillable
                     ? `<span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.label} ▸</span>`
                     : `<span class="budget-cat-name-leaf" style="border-left:4px solid ${r.color}; padding-left:8px;">${r.label}</span>`;
+>>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
+=======
+                const nameHtml = drillable
+                    ? `<span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.label} ▸</span>`
+                    : `<span class="budget-cat-name-leaf" style="border-left:4px solid ${r.color}; padding-left:8px;">${r.label}</span>`;
+>>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
                 return `
                     <div class="budget-row" data-key="${key}" data-avg="${r.avgMonthlyCents}">
                         <div class="budget-row-header">
+<<<<<<< HEAD
+<<<<<<< HEAD
+                            <span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.category} ▸</span>
+                            <span class="budget-avg">${t('budget.avgIst')} ${fmt_eur(r.avgMonthlyCents)}${t('budget.perMonth')}</span>
+=======
                             ${nameHtml}
                             <span class="budget-avg">Ø Ist: ${fmt_eur(r.avgMonthlyCents)}/Monat (${r.count} Buchungen)</span>
+>>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
+=======
+                            ${nameHtml}
+                            <span class="budget-avg">Ø Ist: ${fmt_eur(r.avgMonthlyCents)}/Monat (${r.count} Buchungen)</span>
+>>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
                         </div>
                         <div class="budget-controls">
                             <input type="range" min="0" max="${Math.ceil(rowMax)}" step="5" value="${budgetEUR}" class="budget-slider" data-key="${key}">
@@ -249,7 +350,7 @@
                         <div class="budget-status-text" style="color:${overBudget ? '#e74c3c' : '#555'}">${statusText}</div>
                     </div>
                 `;
-            }).join('') || '<p style="color:#999;">Keine Ausgaben in diesem Zeitraum/dieser Kategorie.</p>';
+            }).join('') || `<p style="color:#999;">${t('budget.noData')}</p>`;
 
             if (drillable) {
                 listEl.querySelectorAll('.budget-cat-name').forEach(el => {
@@ -288,13 +389,13 @@
             text.style.color = overBudget ? '#e74c3c' : '#555';
             text.textContent = budgetCents === 0 ? '' :
                 (overBudget
-                    ? `Über Budget um ${fmt_eur(avgCents - budgetCents)}/Monat`
-                    : `Im Budget (${fmt_eur(budgetCents - avgCents)} Spielraum/Monat)`);
+                    ? t('budget.overBudget', { amount: fmt_eur(avgCents - budgetCents) })
+                    : t('budget.inBudget', { amount: fmt_eur(budgetCents - avgCents) }));
         }
 
         function render_budget_breadcrumbs() {
             const el = document.getElementById('budgetBreadcrumbs');
-            let html = '<span data-level="-1">All Categories</span>';
+            let html = `<span data-level="-1">${t('breadcrumbs.allCategories')}</span>`;
             budget_current_path.forEach((cat, idx) => {
                 html += ' > <span data-level="' + idx + '">' + path_label(budget_current_path, idx) + '</span>';
             });
@@ -450,6 +551,30 @@
             render_all();
         }
 
+<<<<<<< HEAD
+<<<<<<< HEAD
+        function render_stats_filter_note() {
+            const el = document.getElementById('statsBar');
+            const note = el.querySelector('.leak-filter-note');
+            if (note) note.remove();
+            if (leakCategoryFilter) {
+                const span = document.createElement('span');
+                span.className = 'leak-filter-note';
+                span.style.marginLeft = '15px';
+                span.innerHTML = ` | ${t('stats.filteredNote')} <b>${leakCategoryFilter}</b> <a href="#" id="clearLeakFilter">${t('stats.resetFilter')}</a>`;
+                el.appendChild(span);
+                document.getElementById('clearLeakFilter').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    leakCategoryFilter = null;
+                    render_all();
+                });
+            }
+        }
+
+=======
+>>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
+=======
+>>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
         function render_stats_bar(groupSummary) {
             const el = document.getElementById('statsBar');
             const savingsRate = groupSummary.totalIncome > 0
@@ -457,10 +582,10 @@
                 : '–';
             const netColor = groupSummary.net >= 0 ? '#2ecc71' : '#e74c3c';
             el.innerHTML = `
-                Ausgaben: <b>${fmt_eur(groupSummary.totalExpenses)}</b>
-                &nbsp;|&nbsp; Einnahmen (Lohn etc., fix): <b>${fmt_eur(groupSummary.totalIncome)}</b>
-                &nbsp;|&nbsp; Netto: <b style="color:${netColor}">${fmt_eur(groupSummary.net)}</b>
-                &nbsp;|&nbsp; Sparquote: <b style="color:${netColor}">${savingsRate}%</b>
+                ${t('stats.expenses')} <b>${fmt_eur(groupSummary.totalExpenses)}</b>
+                &nbsp;|&nbsp; ${t('stats.income')} <b>${fmt_eur(groupSummary.totalIncome)}</b>
+                &nbsp;|&nbsp; ${t('stats.net')} <b style="color:${netColor}">${fmt_eur(groupSummary.net)}</b>
+                &nbsp;|&nbsp; ${t('stats.savingsRate')} <b style="color:${netColor}">${savingsRate}%</b>
             `;
         }
 
@@ -475,13 +600,15 @@
             return csvRows.join('\n');
         }
         
-        function loadCsvFile(file) {
+        function loadCsvFile(file, config) {
             if (!file) return;
+            const cfg = config || get_csv_config();
             const reader = new FileReader();
             reader.onload = function(e) {
                 const csv = e.target.result;
                 localStorage.setItem('csvData', csv);
-                parse_csv(csv);
+                localStorage.setItem('csvDataConfig', JSON.stringify(cfg));
+                parse_csv(csv, cfg);
                 classify_all(module_data, ruleSet);
                 populate_year_buttons();
                 tableControlsInitialized = false;
@@ -489,11 +616,16 @@
                 render_all();
                 render_budget();
             };
-            reader.readAsText(file);
+            reader.readAsText(file, encoding_label(cfg.encoding));
+        }
+
+        function encoding_label(encoding) {
+            const map = { 'utf-8': 'UTF-8', 'iso-8859-1': 'ISO-8859-1', 'windows-1252': 'windows-1252' };
+            return map[encoding] || 'UTF-8';
         }
 
         document.getElementById('csvFile').addEventListener('change', (e) => {
-            loadCsvFile(e.target.files[0]);
+            loadCsvFile(e.target.files[0], read_csv_config_from_form());
         });
 
         document.getElementById('loadSampleBtn').addEventListener('click', async () => {
@@ -502,6 +634,7 @@
                 const jsonData = await response.json();
                 const csvData = jsonToCsv(jsonData);
                 localStorage.setItem('csvData', csvData);
+                localStorage.removeItem('csvDataConfig');
                 parse_csv(csvData);
                 classify_all(module_data, ruleSet);
                 populate_year_buttons();
@@ -511,7 +644,7 @@
                 render_budget();
             } catch (error) {
                 console.error('Error loading sample data:', error);
-                alert('Failed to load sample data');
+                alert(t('alerts.loadSampleFailed'));
             }
         });
 
@@ -540,7 +673,7 @@
             const container = document.getElementById('yearButtons');
             container.innerHTML = '';
             const allBtn = document.createElement('button');
-            allBtn.textContent = 'All Years';
+            allBtn.textContent = t('filters.allYears');
             allBtn.addEventListener('click', () => filter_by_year(''));
             container.appendChild(allBtn);
             years.forEach(y => {
@@ -576,10 +709,10 @@
             }
 
             if (current_path.length === 0) {
-                breadcrumbsEl.innerHTML = '<span style="color: #999;">All Categories</span>';
+                breadcrumbsEl.innerHTML = `<span style="color: #999;">${t('breadcrumbs.allCategories')}</span>`;
                 return;
             }
-            let html = '<span data-level="-1">All Categories</span>';
+            let html = `<span data-level="-1">${t('breadcrumbs.allCategories')}</span>`;
             current_path.forEach((cat, idx) => {
                 html += ' > <span data-level="' + idx + '">' + path_label(current_path, idx) + '</span>';
             });
@@ -635,7 +768,7 @@
             modal.style.display = 'block';
         });
 
-        // Settings modal sub-tabs (Regeln / Export-Import)
+        // Settings modal sub-tabs (Regeln / Export-Import / Sprache / CSV-Import)
         document.querySelectorAll('.settings-tab-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
@@ -643,6 +776,8 @@
                 const target = btn.dataset.settingsTab;
                 document.getElementById('settingsTab-rules').hidden = target !== 'rules';
                 document.getElementById('settingsTab-importexport').hidden = target !== 'importexport';
+                document.getElementById('settingsTab-languages').hidden = target !== 'languages';
+                document.getElementById('settingsTab-csvimport').hidden = target !== 'csvimport';
             });
         });
 
@@ -664,8 +799,8 @@
             const maxPriority = ruleSet.rules.reduce((m, r) => Math.max(m, r.priority || 0), 0);
             ruleSet.rules.push({
                 id: 'custom_' + Date.now(),
-                label: 'Neue Regel',
-                category: 'Neue Kategorie',
+                label: t('rules.newRuleLabel'),
+                category: t('rules.newRuleCategory'),
                 group: 'discretionary',
                 namePattern: '',
                 verwendungPattern: '',
@@ -677,7 +812,7 @@
         });
 
         loadDefaultRulesBtn.addEventListener('click', async () => {
-            if (!confirm('Eigene Regeln durch die Standardregeln ersetzen?')) return;
+            if (!confirm(t('importexport.confirmReplace'))) return;
             const def = await load_default_rule_set();
             ruleSet = JSON.parse(JSON.stringify(def));
             renderRulesList();
@@ -687,7 +822,7 @@
             rulesListEl.innerHTML = '';
             const rules = ruleSet.rules || [];
             if (rules.length === 0) {
-                rulesListEl.innerHTML = '<p style="color: #999; font-style: italic;">Keine Regeln definiert. Klicke auf "+ Regel hinzufügen".</p>';
+                rulesListEl.innerHTML = `<p style="color: #999; font-style: italic;">${t('rules.noRules')}</p>`;
                 return;
             }
 
@@ -701,31 +836,31 @@
                 ruleDetails.dataset.search = searchText;
                 ruleDetails.innerHTML = `
                     <summary>
-                        <span class="rule-summary-label">${rule.label || '(ohne Label)'}</span>
+                        <span class="rule-summary-label">${rule.label || t('rules.noLabel')}</span>
                         <span class="rule-summary-badge" style="background:${groupMeta.color}">${groupMeta.label}</span>
                         <span class="rule-summary-priority">Prio ${rule.priority || 0}</span>
                     </summary>
                     <div class="rule-body">
                         <div class="rule-header">
-                            <input type="text" placeholder="Label (z.B. 'Miete', 'Steam')" value="${rule.label}" data-idx="${idx}" data-field="label">
+                            <input type="text" placeholder="${t('rules.labelPlaceholder')}" value="${rule.label}" data-idx="${idx}" data-field="label">
                             <button class="delete-rule" data-idx="${idx}">🗑️</button>
                         </div>
-                        <label>Kategorie (Anzeige im Dashboard):</label>
-                        <input type="text" placeholder="z.B. Gaming" value="${rule.category || ''}" data-idx="${idx}" data-field="category">
-                        <label>Gruppe:</label>
+                        <label>${t('rules.categoryLabel')}</label>
+                        <input type="text" placeholder="${t('rules.categoryPlaceholder')}" value="${rule.category || ''}" data-idx="${idx}" data-field="category">
+                        <label>${t('rules.groupLabel')}</label>
                         <select data-idx="${idx}" data-field="group">${group_options_html(rule.group)}</select>
-                        <label>Name-Muster (Regex):</label>
-                        <input type="text" placeholder="z.B. Amazon|Netflix|Spotify" value="${rule.namePattern || ''}" data-idx="${idx}" data-field="namePattern">
-                        <label>Verwendungszweck-Muster (Regex):</label>
-                        <input type="text" placeholder="z.B. Miete|Abonnement" value="${rule.verwendungPattern || ''}" data-idx="${idx}" data-field="verwendungPattern">
-                        <label>Bank-Kategorie-Muster (Regex, optional):</label>
-                        <input type="text" placeholder="z.B. Paypal" value="${rule.kategoriePattern || ''}" data-idx="${idx}" data-field="kategoriePattern">
-                        <label>Match-Typ:</label>
+                        <label>${t('rules.namePatternLabel')}</label>
+                        <input type="text" placeholder="${t('rules.namePatternPlaceholder')}" value="${rule.namePattern || ''}" data-idx="${idx}" data-field="namePattern">
+                        <label>${t('rules.verwendungPatternLabel')}</label>
+                        <input type="text" placeholder="${t('rules.verwendungPatternPlaceholder')}" value="${rule.verwendungPattern || ''}" data-idx="${idx}" data-field="verwendungPattern">
+                        <label>${t('rules.kategoriePatternLabel')}</label>
+                        <input type="text" placeholder="${t('rules.kategoriePatternPlaceholder')}" value="${rule.kategoriePattern || ''}" data-idx="${idx}" data-field="kategoriePattern">
+                        <label>${t('rules.matchTypeLabel')}</label>
                         <select data-idx="${idx}" data-field="matchType">
-                            <option value="or" ${rule.matchType === 'or' ? 'selected' : ''}>OR (irgendein Muster trifft)</option>
-                            <option value="and" ${rule.matchType === 'and' ? 'selected' : ''}>AND (alle vorhandenen Muster müssen treffen)</option>
+                            <option value="or" ${rule.matchType === 'or' ? 'selected' : ''}>${t('rules.matchTypeOr')}</option>
+                            <option value="and" ${rule.matchType === 'and' ? 'selected' : ''}>${t('rules.matchTypeAnd')}</option>
                         </select>
-                        <label>Priorität (höher = wird zuerst geprüft):</label>
+                        <label>${t('rules.priorityLabel')}</label>
                         <input type="number" value="${rule.priority || 0}" data-idx="${idx}" data-field="priority">
                     </div>
                 `;
@@ -785,20 +920,20 @@
                 try {
                     const imported = JSON.parse(ev.target.result);
                     if (!imported.rules || !Array.isArray(imported.rules)) {
-                        throw new Error('Datei enthält kein gültiges "rules"-Array');
+                        throw new Error(t('importexport.invalidFile'));
                     }
                     ruleSet = imported;
                     renderRulesList();
-                    alert('SETTING erfolgreich importiert! Klicke "Speichern" um es zu übernehmen.');
+                    alert(t('importexport.importSuccess'));
                 } catch (err) {
-                    alert('Import fehlgeschlagen: ' + err.message);
+                    alert(t('importexport.importFailed', { error: err.message }));
                 }
             };
             reader.readAsText(file);
         });
 
         document.getElementById('exportUnclassifiedBtn').addEventListener('click', () => {
-            if (module_data.length === 0) { alert('Erst eine CSV laden.'); return; }
+            if (module_data.length === 0) { alert(t('alerts.needCsvFirst')); return; }
             const fd = currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : [...module_data];
             const unclassified = build_unclassified_report(fd);
             const totalEUR = unclassified.reduce((a, e) => a + e.totalEUR, 0);
@@ -837,8 +972,83 @@
             URL.revokeObjectURL(url);
         });
 
+        // ===== CSV IMPORT CONFIG (delimiter, line break, encoding, column mapping) =====
+
+        function delimiter_from_token(token) { return token === 'tab' ? '\t' : token; }
+        function delimiter_to_token(delim) { return delim === '\t' ? 'tab' : delim; }
+        function linebreak_from_token(token) { return token === 'lf' ? '\n' : token === 'crlf' ? '\r\n' : 'auto'; }
+        function linebreak_to_token(lb) { return lb === '\n' ? 'lf' : lb === '\r\n' ? 'crlf' : 'auto'; }
+
+        function read_csv_config_from_form() {
+            return {
+                delimiter: delimiter_from_token(document.getElementById('csvDelimiter').value),
+                lineBreak: linebreak_from_token(document.getElementById('csvLineBreak').value),
+                encoding: document.getElementById('csvEncoding').value,
+                decimalSeparator: document.getElementById('csvDecimalSeparator').value,
+                hasHeader: document.getElementById('csvHasHeader').checked,
+                columns: {
+                    date: document.getElementById('csvColDate').value,
+                    name: document.getElementById('csvColName').value,
+                    verwendungszweck: document.getElementById('csvColVerwendungszweck').value,
+                    betrag: document.getElementById('csvColBetrag').value,
+                    kategorie: document.getElementById('csvColKategorie').value
+                }
+            };
+        }
+
+        function populate_csv_form(config) {
+            document.getElementById('csvDelimiter').value = delimiter_to_token(config.delimiter);
+            document.getElementById('csvLineBreak').value = linebreak_to_token(config.lineBreak);
+            document.getElementById('csvEncoding').value = config.encoding;
+            document.getElementById('csvDecimalSeparator').value = config.decimalSeparator;
+            document.getElementById('csvHasHeader').checked = config.hasHeader;
+            document.getElementById('csvColDate').value = config.columns.date;
+            document.getElementById('csvColName').value = config.columns.name;
+            document.getElementById('csvColVerwendungszweck').value = config.columns.verwendungszweck;
+            document.getElementById('csvColBetrag').value = config.columns.betrag;
+            document.getElementById('csvColKategorie').value = config.columns.kategorie;
+        }
+
+        document.getElementById('csvSaveConfigBtn').addEventListener('click', () => {
+            save_csv_config(read_csv_config_from_form());
+            const note = document.getElementById('csvSavedNote');
+            note.style.display = 'inline';
+            setTimeout(() => { note.style.display = 'none'; }, 3000);
+        });
+
+        document.getElementById('csvResetDefaultsBtn').addEventListener('click', () => {
+            populate_csv_form(default_csv_config());
+        });
+
+        // ===== LANGUAGE SWITCHING =====
+
+        function refresh_footer() {
+            load_footer('appFooter', t('footer.poweredBy'));
+        }
+
+        document.querySelectorAll('input[name="appLanguage"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                set_language(e.target.value);
+                apply_static_i18n();
+                refresh_footer();
+                if (modal.style.display === 'block') renderRulesList();
+                if (module_data.length > 0) {
+                    render_all();
+                    render_budget();
+                }
+            });
+        });
+
         // Restore from localStorage
         window.addEventListener('load', async () => {
+            apply_static_i18n();
+            const langRadio = document.querySelector(`input[name="appLanguage"][value="${get_language()}"]`);
+            if (langRadio) langRadio.checked = true;
+            refresh_footer();
+
+            const csvConfig = get_csv_config();
+            populate_csv_form(csvConfig);
+
             const defaultRuleSet = await load_default_rule_set();
             const stored = get_stored_rule_set();
             ruleSet = stored || JSON.parse(JSON.stringify(defaultRuleSet));
@@ -846,7 +1056,9 @@
 
             const storedCsv = localStorage.getItem('csvData');
             if (storedCsv) {
-                parse_csv(storedCsv);
+                const storedCsvConfigRaw = localStorage.getItem('csvDataConfig');
+                const storedCsvConfig = storedCsvConfigRaw ? JSON.parse(storedCsvConfigRaw) : undefined;
+                parse_csv(storedCsv, storedCsvConfig);
                 classify_all(module_data, ruleSet);
                 populate_year_buttons();
                 tableControlsInitialized = false;

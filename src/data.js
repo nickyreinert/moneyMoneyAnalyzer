@@ -1,20 +1,24 @@
 // --- data.js ---
+import { parse_csv_rows, default_csv_config } from './csv_config.js';
+
 export let data = [];
 export let filtered_data = [];
 export let current_path = [];
 
-export function parse_csv(csv) {
-  const lines = csv.split('\n');
-  const headers = lines[0].split(';');
-  data = lines.slice(1).filter(l => l.trim()).map(line => {
-    const values = line.split(';');
-    const obj = {};
-    headers.forEach((h, i) => obj[h] = values[i]);
+// `config` follows the shape of csv_config.js's default_csv_config(); if
+// omitted, the classic MoneyMoney/DKB defaults are used (";" delimiter,
+// German decimal comma, fixed Datum/Name/Verwendungszweck/Betrag/Kategorie
+// header names).
+export function parse_csv(csv, config) {
+  const cfg = config || default_csv_config();
+  const rows = parse_csv_rows(csv, cfg);
+  data = rows.map(obj => {
     obj.date = parse_date(obj.Datum);
     obj.categories = obj.Kategorie ? obj.Kategorie.split(' - ') : ['Other'];
-    obj.in_out = parseFloat((obj.Betrag || '0').replace(',', '.')) > 0 ? 'in' : 'out';
+    // Betrag is already normalized to "1234.56" form by parse_csv_rows
+    obj.in_out = parseFloat(obj.Betrag || '0') > 0 ? 'in' : 'out';
     // store amounts as integer cents to avoid floating point accumulation
-    const parsed = Math.round(parseFloat((obj.Betrag || '0').replace(',', '.')) * 100);
+    const parsed = Math.round(parseFloat(obj.Betrag || '0') * 100);
     obj.betrag_cents = Number.isNaN(parsed) ? 0 : parsed;
     // Store name and verwendungszweck for regex matching
     obj.name = obj.Name || '';
