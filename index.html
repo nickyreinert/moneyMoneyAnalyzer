@@ -184,6 +184,7 @@
             const effectiveLevel = current_path.length;
 
             const onBarClick = (cat) => {
+                leakCategoryFilter = null; // switch back to the bank-category drill mode
                 current_path.push(cat);
                 localStorage.setItem('currentPath', JSON.stringify(current_path));
                 render_all();
@@ -233,10 +234,15 @@
         }
 
         function onLeakBarClick(category) {
-            leakCategoryFilter = leakCategoryFilter === category ? null : category;
-            render_table(currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : module_data,
-                '#transactionTable tbody', current_path, leakCategoryFilter);
-            render_stats_filter_note();
+            const turningOn = leakCategoryFilter !== category;
+            leakCategoryFilter = turningOn ? category : null;
+            if (turningOn) {
+                // switch back to "All Categories" so breadcrumbs, chart and
+                // table all agree on what's being shown
+                current_path.length = 0;
+                localStorage.setItem('currentPath', JSON.stringify([]));
+            }
+            render_all();
         }
 
         function render_stats_filter_note() {
@@ -373,6 +379,7 @@
                 const level = parseInt(span.getAttribute('data-level'));
                 if (level < current_path.length - 1) {
                     span.addEventListener('click', () => {
+                        leakCategoryFilter = null;
                         if (level === -1) {
                             current_path.length = 0;
                         } else {
@@ -389,6 +396,7 @@
             currentYear = year;
             localStorage.setItem('selectedYear', year);
             current_path.length = 0;
+            leakCategoryFilter = null;
             localStorage.setItem('currentPath', JSON.stringify([]));
             render_all();
         }
