@@ -232,34 +232,60 @@ export function build_unclassified_report(rows) {
     .sort((a, b) => b.totalEUR - a.totalEUR);
 }
 
-// For the Budget tab: average monthly spend per direct child category under
-// `path`, restricted to a single year (or all years if `year` is falsy).
-// Uses the same bank-Kategorie hierarchy as the main drill-down (not the
-// rule-engine categories), and excludes internal-transfer rows so PayPal
-// funding/settlement legs never inflate the average. The average divides by
-// the number of distinct months that actually occur within the selected
-// scope, so a partial current year isn't divided by 12.
-export function build_budget_report(rows, path, level, year) {
+// For the Budget tab: average monthly spend for the selected drill level,
+// restricted to a single year (or all years if `year` is falsy). Unlike the
+// main dashboard's drill-down, this does NOT use the raw bank-Kategorie
+// split — that tree has "AUSGABEN", "Paypal", "Other" etc. as unrelated
+// top-level siblings (Paypal-Kategorie rows are literally "Paypal" with no
+// "AUSGABEN -" prefix, blank ones fall back to "Other"), which makes no
+// sense for budgeting: money spent via PayPal is still just money spent,
+// PayPal is a payment method, not a spending category. Budgets instead
+// drill through the rule-engine classification, which already resolves
+// PayPal/blank-Kategorie rows to the real category (Amazon, Supermarkt,
+// ...) the same way as a direct-debit purchase:
+//   path = []                -> single "Ausgaben" root (all real spend)
+//   path = ['Ausgaben']      -> one row per group (Fixkosten/Notwendig/...)
+//   path = ['Ausgaben', gid] -> one row per category within that group
+// Internal-transfer rows (PayPal funding/settlement legs) are excluded so
+// the average is never inflated by the same purchase counting twice. The
+// average divides by the number of distinct months that actually occur
+// within the selected scope, so a partial current year isn't divided by 12.
+export function build_budget_report(rows, path, year, ruleSet) {
   const yearRows = year ? rows.filter(r => r.date.getFullYear() == year) : rows;
   const monthsSet = new Set(yearRows.map(r => `${r.date.getFullYear()}-${r.date.getMonth()}`));
   const monthCount = monthsSet.size || 1;
+  const expenseRows = yearRows.filter(r => r.in_out === 'out' && is_real_cashflow(r));
 
-  const filtered = yearRows.filter(r =>
-    r.in_out === 'out' && is_real_cashflow(r) && path.every((p, i) => r.categories[i] === p)
-  );
+  const summarize = (subset) => {
+    const totalCents = subset.reduce((s, r) => s + Math.abs(r.betrag_cents), 0);
+    return { totalCents, avgMonthlyCents: Math.round(totalCents / monthCount), count: subset.length };
+  };
+  const groupMeta = (id) => (ruleSet.groups || []).find(g => g.id === id) || { label: id, color: '#95a5a6' };
 
+  if (path.length === 0) {
+    return [{ key: 'Ausgaben', label: 'Ausgaben', color: '#34495e', ...summarize(expenseRows) }];
+  }
+
+  if (path.length === 1) {
+    const byGroup = {};
+    expenseRows.forEach(r => {
+      const g = (r._cls && r._cls.group) || 'unclassified';
+      (byGroup[g] = byGroup[g] || []).push(r);
+    });
+    return Object.entries(byGroup)
+      .map(([groupId, subset]) => ({ key: groupId, label: groupMeta(groupId).label, color: groupMeta(groupId).color, ...summarize(subset) }))
+      .sort((a, b) => b.avgMonthlyCents - a.avgMonthlyCents);
+  }
+
+  const groupId = path[1];
+  const groupRows = expenseRows.filter(r => ((r._cls && r._cls.group) || 'unclassified') === groupId);
   const byCat = {};
-  filtered.forEach(r => {
-    const cat = r.categories[level] || 'Other';
-    byCat[cat] = (byCat[cat] || 0) + Math.abs(r.betrag_cents);
+  groupRows.forEach(r => {
+    const cat = (r._cls && r._cls.category) || 'Unklassifiziert';
+    (byCat[cat] = byCat[cat] || []).push(r);
   });
-
   return Object.entries(byCat)
-    .map(([category, totalCents]) => ({
-      category,
-      totalCents,
-      avgMonthlyCents: Math.round(totalCents / monthCount)
-    }))
+    .map(([category, subset]) => ({ key: category, label: category, color: groupMeta(groupId).color, ...summarize(subset) }))
     .sort((a, b) => b.avgMonthlyCents - a.avgMonthlyCents);
 }
 

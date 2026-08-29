@@ -99,6 +99,7 @@ h1 { margin: 0; padding: 10px; }
 .budget-row-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
 .budget-cat-name { font-weight: bold; cursor: pointer; color: #0066cc; }
 .budget-cat-name:hover { text-decoration: underline; }
+.budget-cat-name-leaf { font-weight: bold; color: #333; }
 .budget-avg { color: #555; font-size: 0.9em; }
 .budget-controls { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
 .budget-controls input[type="range"] { flex: 1; }

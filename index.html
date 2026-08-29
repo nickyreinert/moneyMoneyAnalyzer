@@ -199,8 +199,8 @@
                 return;
             }
 
-            const level = budget_current_path.length;
-            const report = build_budget_report(module_data, budget_current_path, level, currentYear);
+            const report = build_budget_report(module_data, budget_current_path, currentYear, ruleSet);
+            const drillable = budget_current_path.length < 2; // 3 levels total: Ausgaben -> Gruppe -> Kategorie
 
             render_budget_breadcrumbs();
 
@@ -208,18 +208,18 @@
             const parentBudget = budget_current_path.length > 0 ? budgets[parentKey] : null;
 
             if (budget_current_path.length > 0) {
-                const label = budget_current_path[budget_current_path.length - 1];
+                const label = budget_path_label(budget_current_path.length - 1);
                 introEl.innerHTML = parentBudget != null
                     ? `Budget für <b>${label}</b>: <b>${fmt_eur_plain(parentBudget)}</b>/Monat — verteile es unten auf die Unterkategorien.`
                     : `Für <b>${label}</b> ist noch kein Budget gesetzt. Setz eins auf der vorherigen Ebene, oder vergib hier direkt Budgets für die Unterkategorien.`;
             } else {
-                introEl.innerHTML = `Ø Ausgaben pro Monat für <b>${currentYear || 'alle Jahre'}</b> je Kategorie (PayPal-Doppelbuchungen bereits ausgeschlossen). Klick auf einen Namen zum Reindrillen.`;
+                introEl.innerHTML = `Ø Ausgaben pro Monat für <b>${currentYear || 'alle Jahre'}</b> — PayPal ist nur eine Zahlungsart und taucht hier nirgends als eigene Kategorie auf, alles läuft in die tatsächliche Ausgabenkategorie ein. Klick auf "Ausgaben" zum Reindrillen.`;
             }
 
             const rowMaxDefault = parentBudget != null ? parentBudget : null;
 
             listEl.innerHTML = report.map(r => {
-                const path = [...budget_current_path, r.category];
+                const path = [...budget_current_path, r.key];
                 const key = budget_key(path);
                 const budgetEUR = budgets[key] != null ? budgets[key] : 0;
                 const avgEUR = r.avgMonthlyCents / 100;
@@ -231,11 +231,14 @@
                     (overBudget
                         ? `Über Budget um ${fmt_eur(r.avgMonthlyCents - budgetCents)}/Monat`
                         : `Im Budget (${fmt_eur(budgetCents - r.avgMonthlyCents)} Spielraum/Monat)`);
+                const nameHtml = drillable
+                    ? `<span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.label} ▸</span>`
+                    : `<span class="budget-cat-name-leaf" style="border-left:4px solid ${r.color}; padding-left:8px;">${r.label}</span>`;
                 return `
                     <div class="budget-row" data-key="${key}" data-avg="${r.avgMonthlyCents}">
                         <div class="budget-row-header">
-                            <span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.category} ▸</span>
-                            <span class="budget-avg">Ø Ist: ${fmt_eur(r.avgMonthlyCents)}/Monat</span>
+                            ${nameHtml}
+                            <span class="budget-avg">Ø Ist: ${fmt_eur(r.avgMonthlyCents)}/Monat (${r.count} Buchungen)</span>
                         </div>
                         <div class="budget-controls">
                             <input type="range" min="0" max="${Math.ceil(rowMax)}" step="5" value="${budgetEUR}" class="budget-slider" data-key="${key}">
@@ -247,17 +250,29 @@
                 `;
             }).join('') || '<p style="color:#999;">Keine Ausgaben in diesem Zeitraum/dieser Kategorie.</p>';
 
-            listEl.querySelectorAll('.budget-cat-name').forEach(el => {
-                el.addEventListener('click', () => {
-                    budget_current_path = JSON.parse(el.dataset.path);
-                    render_budget();
+            if (drillable) {
+                listEl.querySelectorAll('.budget-cat-name').forEach(el => {
+                    el.addEventListener('click', () => {
+                        budget_current_path = JSON.parse(el.dataset.path);
+                        render_budget();
+                    });
                 });
-            });
+            }
             listEl.querySelectorAll('.budget-slider, .budget-number').forEach(el => {
                 el.addEventListener('input', (e) => {
                     sync_budget_row(e.target.dataset.key, parseFloat(e.target.value) || 0);
                 });
             });
+        }
+
+        // Maps a budget_current_path index to its display label. Index 0 is
+        // always the "Ausgaben" root; index 1 is a group id that needs a
+        // lookup against ruleSet.groups for its human label.
+        function budget_path_label(idx) {
+            if (idx === 0) return 'Ausgaben';
+            const groupId = budget_current_path[1];
+            const g = (ruleSet.groups || []).find(g => g.id === groupId);
+            return g ? g.label : groupId;
         }
 
         // Lightweight update for one row (slider <-> number sync, status bar/text,
@@ -289,7 +304,7 @@
             const el = document.getElementById('budgetBreadcrumbs');
             let html = '<span data-level="-1">All Categories</span>';
             budget_current_path.forEach((cat, idx) => {
-                html += ' > <span data-level="' + idx + '">' + cat + '</span>';
+                html += ' > <span data-level="' + idx + '">' + budget_path_label(idx) + '</span>';
             });
             el.innerHTML = html;
             el.querySelectorAll('span[data-level]').forEach(span => {

@@ -100,13 +100,29 @@ export function classify(tx, ruleSet) {
     // or "EINNAHMEN - <Detail>". The leading AUSGABEN/EINNAHMEN segment itself
     // carries no useful grouping info, so fall back to the segment after it.
     const parts = bankKategorie.split(' - ');
-    const top = parts[0] === 'EINNAHMEN' ? 'einnahmen' : (parts[1] || parts[0]);
+    const isEinnahmenKat = parts[0] === 'EINNAHMEN';
     const leaf = parts[parts.length - 1];
+    // Qualify with the meaningful segment (not the raw "AUSGABEN - ..." string)
+    // so the category reads like the rule-engine's own naming convention
+    // ("Wohnen: Miete") instead of a verbose bank path, while still keeping
+    // leaves from different top-level areas distinguishable. "EINNAHMEN - X"
+    // has no such meaningful area segment, so just use the leaf ("Depot",
+    // "Gehalt") without a redundant prefix.
+    const displayTop = isEinnahmenKat ? null : (parts[1] || parts[0]);
+    const category = displayTop && leaf !== displayTop ? `${displayTop}: ${leaf}` : leaf;
+    // Some banks reuse "EINNAHMEN - Depot" for BOTH incoming dividends/sales
+    // AND outgoing securities purchases (a savings-plan buy nets out
+    // negative). A negative amount under an EINNAHMEN category is money
+    // going out to save/invest, not income - group it accordingly instead
+    // of miscounting it as "Einnahmen" in the expense breakdown.
+    const group = (isEinnahmenKat && tx.in_out === 'out')
+      ? 'savings'
+      : fallback_group_for_category(ruleSet, isEinnahmenKat ? 'einnahmen' : displayTop);
     return {
       ruleId: null,
       label: leaf,
-      category: bankKategorie,
-      group: fallback_group_for_category(ruleSet, top),
+      category,
+      group,
       excluded: false,
       source: 'bank'
     };
