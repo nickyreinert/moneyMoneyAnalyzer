@@ -84,6 +84,15 @@
                     <button id="importRulesBtn">📥 SETTING importieren</button>
                     <input type="file" id="importRulesFile" accept=".json" style="display: none;">
                 </div>
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd;">
+                    <p style="margin: 0 0 10px 0; color: #555;">
+                        Unklassifizierte Ausgaben (aktuell gewählter Jahresfilter) als kompakte,
+                        nach Summe sortierte Händlerliste + aktuellem Regelwerk + fertigem Prompt
+                        exportieren — die Datei kann direkt einem LLM gegeben werden, das ein
+                        erweitertes SETTING zurückgibt (oben importierbar).
+                    </p>
+                    <button id="exportUnclassifiedBtn">🔍 Unklassifizierte Posten für LLM exportieren</button>
+                </div>
             </div>
             <div class="modal-footer">
                 <button id="saveRulesBtn" class="primary">Speichern</button>
@@ -109,7 +118,7 @@
         import {
             parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path,
             reset_state, calculate_classified_average, calculate_monthly_averages,
-            build_leak_report, build_group_summary
+            build_leak_report, build_group_summary, build_unclassified_report
         } from './src/data.js';
         import { render_combined_chart, render_growth_chart, render_averages_chart, render_leak_chart, render_group_summary_chart } from './src/charts.js';
         import { render_table, init_table_controls } from './src/table.js';
@@ -175,7 +184,6 @@
             const effectiveLevel = current_path.length;
 
             const onBarClick = (cat) => {
-                if (cat === 'Other') return;
                 current_path.push(cat);
                 localStorage.setItem('currentPath', JSON.stringify(current_path));
                 render_all();
@@ -256,8 +264,8 @@
                 : '–';
             const netColor = groupSummary.net >= 0 ? '#2ecc71' : '#e74c3c';
             el.innerHTML = `
-                Einnahmen: <b>${fmt_eur(groupSummary.totalIncome)}</b>
-                &nbsp;|&nbsp; Ausgaben: <b>${fmt_eur(groupSummary.totalExpenses)}</b>
+                Ausgaben: <b>${fmt_eur(groupSummary.totalExpenses)}</b>
+                &nbsp;|&nbsp; Einnahmen (Lohn etc., fix): <b>${fmt_eur(groupSummary.totalIncome)}</b>
                 &nbsp;|&nbsp; Netto: <b style="color:${netColor}">${fmt_eur(groupSummary.net)}</b>
                 &nbsp;|&nbsp; Sparquote: <b style="color:${netColor}">${savingsRate}%</b>
             `;
@@ -539,6 +547,46 @@
                 }
             };
             reader.readAsText(file);
+        });
+
+        document.getElementById('exportUnclassifiedBtn').addEventListener('click', () => {
+            if (module_data.length === 0) { alert('Erst eine CSV laden.'); return; }
+            const fd = currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : [...module_data];
+            const unclassified = build_unclassified_report(fd);
+            const totalEUR = unclassified.reduce((a, e) => a + e.totalEUR, 0);
+
+            const payload = {
+                instructions: [
+                    'Du bekommst mein aktuelles Klassifizierungs-SETTING (Feld "currentRuleSet") sowie eine Liste',
+                    'noch unklassifizierter Ausgaben-Händler (Feld "unclassifiedMerchants"), aggregiert nach Name,',
+                    'mit Summe/Häufigkeit/Zeitraum/Beispiel-Verwendungszweck, sortiert nach Summe absteigend.',
+                    'Aufgabe: Ergänze "currentRuleSet.rules" um neue Regeln (oder erweitere bestehende namePattern-',
+                    'Regexe), damit möglichst viele der aufgeführten Händler künftig automatisch einer sinnvollen',
+                    'category und group zugeordnet werden. Nutze möglichst generische, auf den Firmennamen',
+                    'basierende Regex-Muster (kein Overfitting auf Einzelfälle). Handelt es sich erkennbar um eine',
+                    'Privatperson statt einer Firma, ordne der Gruppe "savings" mit category "Private Zahlungen" zu,',
+                    'statt eine personenspezifische Regel anzulegen. Ändere keine bestehenden Regel-"id"s und',
+                    'entferne keine bestehenden Regeln, ergänze nur. Priorität: höhere "priority" wird zuerst',
+                    'geprüft, also spezifischere Regeln höher ansetzen als generische. Einnahmen (Lohn/Gehalt)',
+                    'brauchen keine weitere Aufschlüsselung, die sind bereits als "income" abgedeckt.',
+                    'Antworte NUR mit dem vollständigen, aktualisierten JSON in exakt der Struktur von',
+                    '"currentRuleSet" (also: {version, name, groups, categoryGroupFallback, rules}) - kein',
+                    'zusätzlicher Text, kein Markdown-Codeblock drumherum.'
+                ].join(' '),
+                periodFilter: currentYear || 'alle Jahre',
+                totalUnclassifiedEUR: Math.round(totalEUR * 100) / 100,
+                currentRuleSet: ruleSet,
+                unclassifiedMerchants: unclassified
+            };
+
+            const dataStr = JSON.stringify(payload, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'moneymoney_unclassified_validation.json';
+            a.click();
+            URL.revokeObjectURL(url);
         });
 
         // Restore from localStorage

@@ -59,9 +59,9 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
     pointBorderColor: '#fff',
     pointBorderWidth: 2,
     tension: 0.2,
-    yAxisID: 'y'
+    yAxisID: 'y1'
   };
-  
+
   const datasets = [...barDatasets, lineDataset];
   
   // Add recurring average line if data is provided
@@ -89,13 +89,19 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
     };
     datasets.push(recurringAvgDataset);
   }
+  // Income (maxIn) is intentionally NOT part of the expense axis: group_data
+  // always sums income across the full period regardless of the category
+  // drill-down, so once you drill into a small subcategory its bars can be
+  // a tiny fraction of monthly income — sharing one axis would squash them
+  // to invisibility. Income gets its own right-hand axis (y1) instead.
   const sumsOut = keys.map(k => Object.values(outData[k]||{}).reduce((a,b)=>a+b,0));
   const maxOut = sumsOut.length ? Math.max(...sumsOut) : 0;
   const maxIn = keys.map(k=>inData[k]||0).reduce((a,b)=>Math.max(a,b),0);
-  // recurringAvgData values are already in euros, so we need to convert to cents for comparison with maxOut/maxIn
+  // recurringAvgData values are already in euros, so we need to convert to cents for comparison with maxOut
   const maxRecurringAvg = recurringAvgData ? Math.max(...Object.values(recurringAvgData)) * 100 : 0;
   // maxVal in euros
-  let maxVal = Math.ceil(Math.max(maxOut, maxIn, maxRecurringAvg, 100) * 1.05) / 100;
+  let maxVal = Math.ceil(Math.max(maxOut, maxRecurringAvg, 100) * 1.05) / 100;
+  let maxInVal = Math.ceil(Math.max(maxIn, 100) * 1.05) / 100;
   
   // Calculate stack totals in euros for each bar
   const stackTotals = keys.map(k => {
@@ -137,20 +143,18 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      scales: { 
-        x: { stacked: true }, 
-        y: { stacked: true, beginAtZero: true, max: maxVal }
+      scales: {
+        x: { stacked: true },
+        y: { stacked: true, beginAtZero: true, max: maxVal },
+        y1: { position: 'right', beginAtZero: true, max: maxInVal, grid: { drawOnChartArea: false }, title: { display: true, text: 'Income' } }
       },
       onClick: (evt, elements) => {
         if (!elements || !elements.length) return;
         const el = elements[0];
         const dsIndex = el.datasetIndex;
-        // only handle bar dataset clicks, and don't allow drilling into "Other"
+        // only handle bar dataset clicks (not the income/avg lines)
         if (dsIndex < categories.length && typeof onBarClick === 'function') {
-          const cat = categories[dsIndex];
-          if (cat !== 'Other') {
-            onBarClick(cat);
-          }
+          onBarClick(categories[dsIndex]);
         }
       },
       plugins:{ 

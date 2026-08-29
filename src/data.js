@@ -183,6 +183,55 @@ export function build_group_summary(rows) {
   return { byGroup, totalIncome, totalExpenses, net: totalIncome - totalExpenses };
 }
 
+// Aggregates the still-unclassified expenses (group === 'unclassified') by
+// counterparty name, so an LLM (or a human) can review a short, dense list
+// instead of thousands of raw rows and propose new/extended rules for the
+// biggest gaps first. Expense-only by design — income ("Lohn") doesn't need
+// per-transaction classification.
+export function build_unclassified_report(rows) {
+  const byName = {};
+  rows.forEach(r => {
+    if (r.in_out !== 'out' || !is_real_cashflow(r)) return;
+    const cls = r._cls || { group: 'unclassified' };
+    if (cls.group !== 'unclassified') return;
+    const key = r.name || '(ohne Namen)';
+    if (!byName[key]) {
+      byName[key] = {
+        name: key,
+        count: 0,
+        totalCents: 0,
+        dateFrom: r.date,
+        dateTo: r.date,
+        bankKategorien: new Set(),
+        sampleVerwendungszweck: new Set()
+      };
+    }
+    const entry = byName[key];
+    entry.count += 1;
+    entry.totalCents += Math.abs(r.betrag_cents);
+    if (r.date < entry.dateFrom) entry.dateFrom = r.date;
+    if (r.date > entry.dateTo) entry.dateTo = r.date;
+    if (r.Kategorie) entry.bankKategorien.add(r.Kategorie);
+    if (entry.sampleVerwendungszweck.size < 3 && r.verwendungszweck) {
+      entry.sampleVerwendungszweck.add(r.verwendungszweck.slice(0, 140));
+    }
+  });
+
+  const fmtDate = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  return Object.values(byName)
+    .map(e => ({
+      name: e.name,
+      count: e.count,
+      totalEUR: round2(e.totalCents / 100),
+      dateFrom: fmtDate(e.dateFrom),
+      dateTo: fmtDate(e.dateTo),
+      bankKategorien: [...e.bankKategorien],
+      sampleVerwendungszweck: [...e.sampleVerwendungszweck]
+    }))
+    .sort((a, b) => b.totalEUR - a.totalEUR);
+}
+
 export function reset_state() { current_path = []; localStorage.removeItem('currentPath'); }
 
 function round2(v) { return Math.round((v + Number.EPSILON) * 100) / 100; }

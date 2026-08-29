@@ -127,7 +127,7 @@
       "label": "Supermarkt & Drogerie",
       "category": "Supermarkt & Drogerie",
       "group": "essential",
-      "namePattern": "REWE|EDEKA|Lidl|Aldi|Kaufland|\\bNetto\\b|\\bPenny\\b|Denns|dm[- ]?drogerie|DM DROGERIE|Rossmann|Müller|real,-|Getränke",
+      "namePattern": "REWE|EDEKA|Lidl|Aldi|Kaufland|\\bNetto\\b|\\bPenny\\b|Denns|dm[.\\- ]?drogerie|Rossmann|M(ü|ue)ller|real,-|Getränke",
       "verwendungPattern": "",
       "kategoriePattern": "Lebensmittel",
       "matchType": "or",
