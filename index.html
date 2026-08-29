@@ -4,10 +4,26 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MoneyMoney Analyzer</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="mask-icon" href="favicon.svg" color="#0066cc">
+    <link rel="apple-touch-icon" href="favicon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#0066cc">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MM Analyzer">
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.warn('SW registration failed:', err));
+            });
+        }
+    </script>
+
     <div class="filters">
         <h1 style="margin-right: 20px; font-size: 1.2em;" data-i18n="app.title">MoneyMoney Analyzer</h1>
         <button id="loadSampleBtn" data-i18n="filters.loadSample">Load Sample Data</button>
@@ -286,15 +302,7 @@
                     ? t('budget.intro.withPath', { label, amount: fmt_eur_plain(parentBudget) })
                     : t('budget.intro.noBudget', { label });
             } else {
-<<<<<<< HEAD
-<<<<<<< HEAD
                 introEl.innerHTML = t('budget.intro.root', { year: currentYear || t('budget.allYears') });
-=======
-                introEl.innerHTML = `Ø Ausgaben pro Monat für <b>${currentYear || 'alle Jahre'}</b> — PayPal ist nur eine Zahlungsart und taucht hier nirgends als eigene Kategorie auf, alles läuft in die tatsächliche Ausgabenkategorie ein. Klick auf "Ausgaben" zum Reindrillen.`;
->>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
-=======
-                introEl.innerHTML = `Ø Ausgaben pro Monat für <b>${currentYear || 'alle Jahre'}</b> — PayPal ist nur eine Zahlungsart und taucht hier nirgends als eigene Kategorie auf, alles läuft in die tatsächliche Ausgabenkategorie ein. Klick auf "Ausgaben" zum Reindrillen.`;
->>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
             }
 
             const rowMaxDefault = parentBudget != null ? parentBudget : null;
@@ -310,37 +318,16 @@
                 const overBudget = budgetCents > 0 && r.avgMonthlyCents > budgetCents;
                 const statusText = budgetCents === 0 ? '' :
                     (overBudget
-<<<<<<< HEAD
                         ? t('budget.overBudget', { amount: fmt_eur(r.avgMonthlyCents - budgetCents) })
                         : t('budget.inBudget', { amount: fmt_eur(budgetCents - r.avgMonthlyCents) }));
-=======
-                        ? `Über Budget um ${fmt_eur(r.avgMonthlyCents - budgetCents)}/Monat`
-                        : `Im Budget (${fmt_eur(budgetCents - r.avgMonthlyCents)} Spielraum/Monat)`);
-<<<<<<< HEAD
                 const nameHtml = drillable
                     ? `<span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.label} ▸</span>`
                     : `<span class="budget-cat-name-leaf" style="border-left:4px solid ${r.color}; padding-left:8px;">${r.label}</span>`;
->>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
-=======
-                const nameHtml = drillable
-                    ? `<span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.label} ▸</span>`
-                    : `<span class="budget-cat-name-leaf" style="border-left:4px solid ${r.color}; padding-left:8px;">${r.label}</span>`;
->>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
                 return `
                     <div class="budget-row" data-key="${key}" data-avg="${r.avgMonthlyCents}">
                         <div class="budget-row-header">
-<<<<<<< HEAD
-<<<<<<< HEAD
-                            <span class="budget-cat-name" data-path='${JSON.stringify(path)}'>${r.category} ▸</span>
-                            <span class="budget-avg">${t('budget.avgIst')} ${fmt_eur(r.avgMonthlyCents)}${t('budget.perMonth')}</span>
-=======
                             ${nameHtml}
-                            <span class="budget-avg">Ø Ist: ${fmt_eur(r.avgMonthlyCents)}/Monat (${r.count} Buchungen)</span>
->>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
-=======
-                            ${nameHtml}
-                            <span class="budget-avg">Ø Ist: ${fmt_eur(r.avgMonthlyCents)}/Monat (${r.count} Buchungen)</span>
->>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
+                            <span class="budget-avg">${t('budget.avgIst')} ${fmt_eur(r.avgMonthlyCents)}${t('budget.perMonth')} (${r.count})</span>
                         </div>
                         <div class="budget-controls">
                             <input type="range" min="0" max="${Math.ceil(rowMax)}" step="5" value="${budgetEUR}" class="budget-slider" data-key="${key}">
@@ -551,8 +538,6 @@
             render_all();
         }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         function render_stats_filter_note() {
             const el = document.getElementById('statsBar');
             const note = el.querySelector('.leak-filter-note');
@@ -571,10 +556,6 @@
             }
         }
 
-=======
->>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
-=======
->>>>>>> a674e64179b73fd020666ae1734a64a0ebea13f7
         function render_stats_bar(groupSummary) {
             const el = document.getElementById('statsBar');
             const savingsRate = groupSummary.totalIncome > 0
@@ -587,6 +568,7 @@
                 &nbsp;|&nbsp; ${t('stats.net')} <b style="color:${netColor}">${fmt_eur(groupSummary.net)}</b>
                 &nbsp;|&nbsp; ${t('stats.savingsRate')} <b style="color:${netColor}">${savingsRate}%</b>
             `;
+            render_stats_filter_note();
         }
 
         // Wire up UI
