@@ -143,7 +143,8 @@
         import {
             parse_csv, group_data, data as module_data, filtered_data as module_filtered, current_path,
             reset_state, calculate_classified_average, calculate_monthly_averages,
-            build_leak_report, build_group_summary, build_unclassified_report, build_budget_report
+            build_leak_report, build_group_summary, build_unclassified_report, build_budget_report,
+            expense_matches_path
         } from './src/data.js';
         import { render_combined_chart, render_growth_chart, render_averages_chart, render_leak_chart, render_group_summary_chart } from './src/charts.js';
         import { render_table, init_table_controls } from './src/table.js';
@@ -208,7 +209,7 @@
             const parentBudget = budget_current_path.length > 0 ? budgets[parentKey] : null;
 
             if (budget_current_path.length > 0) {
-                const label = budget_path_label(budget_current_path.length - 1);
+                const label = path_label(budget_current_path, budget_current_path.length - 1);
                 introEl.innerHTML = parentBudget != null
                     ? `Budget für <b>${label}</b>: <b>${fmt_eur_plain(parentBudget)}</b>/Monat — verteile es unten auf die Unterkategorien.`
                     : `Für <b>${label}</b> ist noch kein Budget gesetzt. Setz eins auf der vorherigen Ebene, oder vergib hier direkt Budgets für die Unterkategorien.`;
@@ -265,15 +266,6 @@
             });
         }
 
-        // Maps a budget_current_path index to its display label. Index 0 is
-        // always the "Ausgaben" root; index 1 is a group id that needs a
-        // lookup against ruleSet.groups for its human label.
-        function budget_path_label(idx) {
-            if (idx === 0) return 'Ausgaben';
-            const groupId = budget_current_path[1];
-            const g = (ruleSet.groups || []).find(g => g.id === groupId);
-            return g ? g.label : groupId;
-        }
 
         // Lightweight update for one row (slider <-> number sync, status bar/text,
         // parent-allocation summary) without rebuilding the whole list on every
@@ -304,7 +296,7 @@
             const el = document.getElementById('budgetBreadcrumbs');
             let html = '<span data-level="-1">All Categories</span>';
             budget_current_path.forEach((cat, idx) => {
-                html += ' > <span data-level="' + idx + '">' + budget_path_label(idx) + '</span>';
+                html += ' > <span data-level="' + idx + '">' + path_label(budget_current_path, idx) + '</span>';
             });
             el.innerHTML = html;
             el.querySelectorAll('span[data-level]').forEach(span => {
@@ -322,6 +314,30 @@
             const map = {};
             (ruleSet.groups || []).forEach(g => { map[g.id] = g.color; });
             return map;
+        }
+
+        function group_meta(id) {
+            return (ruleSet.groups || []).find(g => g.id === id) || { label: id, color: '#95a5a6' };
+        }
+
+        // Shared by both the main drill-down breadcrumb and the Budget tab:
+        // path[0] is always the literal "Ausgaben" root, path[1] is a group
+        // id needing a lookup for its human label, path[2] (if present) is
+        // already a human-readable category string.
+        function path_label(path, idx) {
+            if (idx === 0) return 'Ausgaben';
+            if (idx === 1) return group_meta(path[1]).label;
+            return path[idx];
+        }
+
+        // Display label/color for one bar in the combined/growth charts,
+        // where the underlying key is 'Ausgaben' (path.length 0), a group id
+        // (path.length 1) or an already-human category string (length 2).
+        function child_label(path, key) {
+            return path.length === 1 ? group_meta(key).label : key;
+        }
+        function child_color(path, key) {
+            return path.length === 0 ? '#34495e' : group_meta(path.length === 1 ? key : path[1]).color;
         }
 
         function fmt_eur(cents) {
@@ -368,16 +384,18 @@
 
         function render_all() {
             const fd = currentYear ? module_data.filter(d => d.date.getFullYear() == currentYear) : [...module_data];
-            const effectiveLevel = current_path.length;
 
             const onBarClick = (cat) => {
-                leakCategoryFilter = null; // switch back to the bank-category drill mode
+                if (current_path.length >= 3) return; // already at a category (leaf) - nothing more to drill into
+                leakCategoryFilter = null; // switch back to the breadcrumb drill-down mode
                 current_path.push(cat);
                 localStorage.setItem('currentPath', JSON.stringify(current_path));
                 render_all();
             };
 
-            const grouped = group_data(fd, effectiveLevel);
+            const grouped = group_data(fd, current_path);
+            const labelFor = (key) => child_label(current_path, key);
+            const colorFor = (key) => child_color(current_path, key);
 
             // Reference line: average monthly "Fixkosten" (kaum beeinflussbare Gruppe)
             const fixedAvgData = calculate_classified_average(fd, 'fixed');
@@ -390,15 +408,15 @@
                     d.date.getFullYear() == currentYear || d.date.getFullYear() == prevYear
                 );
             }
-            const growthGrouped = group_data(growthData, effectiveLevel);
+            const growthGrouped = group_data(growthData, current_path);
 
-            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick, fixedAvgData);
-            render_growth_chart(growthGrouped.out, 'growthChart', growthMode, chartType);
+            render_combined_chart(grouped.out, grouped.in, 'combinedChart', onBarClick, fixedAvgData, labelFor, colorFor);
+            render_growth_chart(growthGrouped.out, 'growthChart', growthMode, chartType, labelFor, colorFor);
 
             // Calculate and Render Averages (using full dataset for context, respecting drill-down)
             let avgRows = module_data;
             if (current_path.length > 0) {
-                 avgRows = avgRows.filter(r => current_path.every((p, i) => r.categories && r.categories[i] === p));
+                 avgRows = avgRows.filter(r => expense_matches_path(r, current_path));
             }
             const avgData = calculate_monthly_averages(avgRows);
             render_averages_chart(avgData, 'averageChart');
@@ -432,24 +450,6 @@
             render_all();
         }
 
-        function render_stats_filter_note() {
-            const el = document.getElementById('statsBar');
-            const note = el.querySelector('.leak-filter-note');
-            if (note) note.remove();
-            if (leakCategoryFilter) {
-                const span = document.createElement('span');
-                span.className = 'leak-filter-note';
-                span.style.marginLeft = '15px';
-                span.innerHTML = ` | Tabelle gefiltert: <b>${leakCategoryFilter}</b> <a href="#" id="clearLeakFilter">(zurücksetzen)</a>`;
-                el.appendChild(span);
-                document.getElementById('clearLeakFilter').addEventListener('click', (e) => {
-                    e.preventDefault();
-                    leakCategoryFilter = null;
-                    render_all();
-                });
-            }
-        }
-
         function render_stats_bar(groupSummary) {
             const el = document.getElementById('statsBar');
             const savingsRate = groupSummary.totalIncome > 0
@@ -462,7 +462,6 @@
                 &nbsp;|&nbsp; Netto: <b style="color:${netColor}">${fmt_eur(groupSummary.net)}</b>
                 &nbsp;|&nbsp; Sparquote: <b style="color:${netColor}">${savingsRate}%</b>
             `;
-            render_stats_filter_note();
         }
 
         // Wire up UI
@@ -552,18 +551,40 @@
             });
         }
 
+        // Single global header for both navigation mechanics: the breadcrumb
+        // drill-down (combined/growth/average charts - hierarchical, click a
+        // segment to jump back up) and the money-flow quick filter (leak
+        // chart/donut - a flat, one-off tag on the transaction table). Only
+        // one is ever active at a time (see onBarClick / onLeakBarClick),
+        // and both render into this same bar so there's one place to look,
+        // with a distinct visual style (chip vs. breadcrumb trail) so it's
+        // still clear which kind of selection is active.
         function render_breadcrumbs() {
             const breadcrumbsEl = document.getElementById('breadcrumbs');
+
+            if (leakCategoryFilter) {
+                breadcrumbsEl.innerHTML = `
+                    <span style="color:#999; cursor:default;">All Categories</span>
+                    <span class="filter-chip">🏷 Kategorie-Filter: <b>${leakCategoryFilter}</b> <a href="#" id="clearLeakFilter">✕</a></span>
+                `;
+                document.getElementById('clearLeakFilter').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    leakCategoryFilter = null;
+                    render_all();
+                });
+                return;
+            }
+
             if (current_path.length === 0) {
                 breadcrumbsEl.innerHTML = '<span style="color: #999;">All Categories</span>';
                 return;
             }
             let html = '<span data-level="-1">All Categories</span>';
             current_path.forEach((cat, idx) => {
-                html += ' > <span data-level="' + idx + '">' + cat + '</span>';
+                html += ' > <span data-level="' + idx + '">' + path_label(current_path, idx) + '</span>';
             });
             breadcrumbsEl.innerHTML = html;
-            
+
             breadcrumbsEl.querySelectorAll('span[data-level]').forEach(span => {
                 const level = parseInt(span.getAttribute('data-level'));
                 if (level < current_path.length - 1) {

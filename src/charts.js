@@ -24,7 +24,7 @@ export function get_color(cat) {
   return colors[cat.length % colors.length]; 
 }
 
-export function render_combined_chart(outData, inData, canvasId, onBarClick, recurringAvgData = null) {
+export function render_combined_chart(outData, inData, canvasId, onBarClick, recurringAvgData = null, labelFor = null, colorFor = null) {
   const labelSet = new Set([...(Object.keys(outData||{})), ...(Object.keys(inData||{}))]);
   const keys = Array.from(labelSet).sort();
   // pretty labels like "Nov 2025"
@@ -34,13 +34,17 @@ export function render_combined_chart(outData, inData, canvasId, onBarClick, rec
       return new Date(y, m-1, 1).toLocaleString('en-US', { month: 'short', year: 'numeric' });
     } catch (e) { return k; }
   });
+  // `categories` holds the stable keys (e.g. group ids) used for both the
+  // click handler and data lookups; labelFor/colorFor translate a key to
+  // display text/color (e.g. a group id to its human label) without
+  // changing what onBarClick receives.
   const categories = [...new Set(Object.values(outData||{}).flatMap(o => Object.keys(o||{})))];
   // Map data using keys (not pretty labels)
   // convert cents -> euros for chart display (exact division)
   const barDatasets = categories.map(cat => ({
-    type: 'bar', label: cat,
+    type: 'bar', label: labelFor ? labelFor(cat) : cat,
     data: keys.map(k => (outData[k] && outData[k][cat]) ? (outData[k][cat] / 100) : 0),
-    backgroundColor: get_color(cat), stack: 'out', order: 10
+    backgroundColor: colorFor ? colorFor(cat) : get_color(cat), stack: 'out', order: 10
   }));
   // make the line visually dominant and ensure it renders after bars
   const lineDataset = {
@@ -336,7 +340,7 @@ export function render_group_summary_chart(summary, ruleSetGroups, canvasId) {
 
 let growth_chart = null;
 
-export function render_growth_chart(outData, canvasId, mode = 'mom', chartType = 'line') {
+export function render_growth_chart(outData, canvasId, mode = 'mom', chartType = 'line', labelFor = null, colorFor = null) {
   const keys = Object.keys(outData || {}).sort();
   
   // For YoY mode, filter to show only the most recent year on X-axis
@@ -383,12 +387,13 @@ export function render_growth_chart(outData, canvasId, mode = 'mom', chartType =
         })
       : growthRates;
     
+    const color = colorFor ? colorFor(cat) : get_color(cat);
     return {
       type: chartType,
-      label: cat,
+      label: labelFor ? labelFor(cat) : cat,
       data: displayGrowthRates,
-      borderColor: chartType === 'line' ? get_color(cat) : undefined,
-      backgroundColor: chartType === 'bar' ? get_color(cat) : 'transparent',
+      borderColor: chartType === 'line' ? color : undefined,
+      backgroundColor: chartType === 'bar' ? color : 'transparent',
       fill: false,
       tension: 0.1,
       borderWidth: chartType === 'line' ? 2 : 1

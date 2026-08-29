@@ -38,21 +38,45 @@ function is_real_cashflow(r) {
   return !(r._cls && r._cls.excluded);
 }
 
-export function group_data(rows, level) {
+// The whole app drills through one shared 3-level expense tree, built from
+// the rule-engine classification rather than the raw bank Kategorie split
+// (that split has "AUSGABEN", "Paypal", "Other" etc. as unrelated top-level
+// siblings, since Paypal-Kategorie rows are literally "Paypal" with no
+// "AUSGABEN -" prefix and blank ones fall back to "Other" — nonsensical for
+// browsing "where does my money go", since PayPal is a payment method, not
+// a spending category). A `path` is always a prefix of:
+//   ['Ausgaben', <group id>, <category>]
+// path.length 0 = every real-cashflow expense; 1 = one group's rows; 2 =
+// one category's rows within a group. Categories are leaves - nothing to
+// drill into beyond path.length 2.
+export function expense_matches_path(r, path) {
+  if (path.length >= 2 && ((r._cls && r._cls.group) || 'unclassified') !== path[1]) return false;
+  if (path.length >= 3 && ((r._cls && r._cls.category) || 'Unklassifiziert') !== path[2]) return false;
+  return true;
+}
+
+// The key identifying which node a row falls into at the *next* level below
+// `path` (i.e. what current_path.push(...) should receive on a click).
+function expense_child_key(r, path) {
+  if (path.length === 0) return 'Ausgaben';
+  if (path.length === 1) return (r._cls && r._cls.group) || 'unclassified';
+  return (r._cls && r._cls.category) || 'Unklassifiziert';
+}
+
+export function group_data(rows, currentPath) {
   const out = {};
   const inData = {};
 
   // For expenses (out) - apply filtering based on mode
   let filteredOut = rows.filter(r => r.in_out === 'out' && is_real_cashflow(r));
 
-  if (current_path.length > 0) {
-    // apply current_path filtering from original bank categories
-    filteredOut = filteredOut.filter(r => current_path.every((p, i) => r.categories[i] === p));
+  if (currentPath.length > 0) {
+    filteredOut = filteredOut.filter(r => expense_matches_path(r, currentPath));
   }
 
   filteredOut.forEach(r => {
     const key = `${r.date.getFullYear()}-${String(r.date.getMonth()+1).padStart(2,'0')}`;
-    const cat = r.categories[level] || 'Other';
+    const cat = expense_child_key(r, currentPath);
     out[key] = out[key] || {};
     out[key][cat] = (out[key][cat] || 0) + Math.abs(r.betrag_cents);
   });
@@ -254,38 +278,25 @@ export function build_budget_report(rows, path, year, ruleSet) {
   const yearRows = year ? rows.filter(r => r.date.getFullYear() == year) : rows;
   const monthsSet = new Set(yearRows.map(r => `${r.date.getFullYear()}-${r.date.getMonth()}`));
   const monthCount = monthsSet.size || 1;
-  const expenseRows = yearRows.filter(r => r.in_out === 'out' && is_real_cashflow(r));
+  const expenseRows = yearRows
+    .filter(r => r.in_out === 'out' && is_real_cashflow(r))
+    .filter(r => expense_matches_path(r, path));
 
-  const summarize = (subset) => {
-    const totalCents = subset.reduce((s, r) => s + Math.abs(r.betrag_cents), 0);
-    return { totalCents, avgMonthlyCents: Math.round(totalCents / monthCount), count: subset.length };
-  };
   const groupMeta = (id) => (ruleSet.groups || []).find(g => g.id === id) || { label: id, color: '#95a5a6' };
+  const colorFor = (childKey) => path.length === 0 ? '#34495e' : groupMeta(path.length === 1 ? childKey : path[1]).color;
+  const labelFor = (childKey) => path.length === 1 ? groupMeta(childKey).label : childKey;
 
-  if (path.length === 0) {
-    return [{ key: 'Ausgaben', label: 'Ausgaben', color: '#34495e', ...summarize(expenseRows) }];
-  }
-
-  if (path.length === 1) {
-    const byGroup = {};
-    expenseRows.forEach(r => {
-      const g = (r._cls && r._cls.group) || 'unclassified';
-      (byGroup[g] = byGroup[g] || []).push(r);
-    });
-    return Object.entries(byGroup)
-      .map(([groupId, subset]) => ({ key: groupId, label: groupMeta(groupId).label, color: groupMeta(groupId).color, ...summarize(subset) }))
-      .sort((a, b) => b.avgMonthlyCents - a.avgMonthlyCents);
-  }
-
-  const groupId = path[1];
-  const groupRows = expenseRows.filter(r => ((r._cls && r._cls.group) || 'unclassified') === groupId);
-  const byCat = {};
-  groupRows.forEach(r => {
-    const cat = (r._cls && r._cls.category) || 'Unklassifiziert';
-    (byCat[cat] = byCat[cat] || []).push(r);
+  const byChild = {};
+  expenseRows.forEach(r => {
+    const key = expense_child_key(r, path);
+    (byChild[key] = byChild[key] || []).push(r);
   });
-  return Object.entries(byCat)
-    .map(([category, subset]) => ({ key: category, label: category, color: groupMeta(groupId).color, ...summarize(subset) }))
+
+  return Object.entries(byChild)
+    .map(([key, subset]) => {
+      const totalCents = subset.reduce((s, r) => s + Math.abs(r.betrag_cents), 0);
+      return { key, label: labelFor(key), color: colorFor(key), totalCents, avgMonthlyCents: Math.round(totalCents / monthCount), count: subset.length };
+    })
     .sort((a, b) => b.avgMonthlyCents - a.avgMonthlyCents);
 }
 

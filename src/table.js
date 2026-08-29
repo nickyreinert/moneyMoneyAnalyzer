@@ -1,4 +1,6 @@
 // --- table.js ---
+import { expense_matches_path } from './data.js';
+
 let sortState = { column: null, ascending: true };
 let filterState = {};
 
@@ -10,11 +12,12 @@ export function render_table(rows, tbodySelector, current_path, leakCategoryFilt
   let display = rows.filter(r => r.in_out === 'out');
 
   if (leakCategoryFilter) {
-    // Money-flow drill-down: filter by rule-engine classification category
+    // Money-flow quick filter: jump straight to one rule-engine category,
+    // independent of (and mutually exclusive with) the breadcrumb drill-down
     display = display.filter(r => r._cls && r._cls.category === leakCategoryFilter);
   } else if (current_path.length > 0) {
-    // Normal mode: filter by bank category path
-    display = display.filter(r => current_path.every((p, i) => r.categories[i] === p));
+    // Breadcrumb drill-down: Ausgaben -> Gruppe -> Kategorie
+    display = display.filter(r => expense_matches_path(r, current_path));
   }
 
   // Apply column filters from saved state

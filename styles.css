@@ -9,6 +9,9 @@ input { margin: 5px; padding: 5px; }
 .breadcrumbs span:hover { text-decoration: underline; }
 .breadcrumbs span:last-child { color: #333; cursor: default; }
 .breadcrumbs span:last-child:hover { text-decoration: none; }
+.filter-chip { margin-left: 10px; background: #fff3cd; border: 1px solid #ffe69c; border-radius: 12px; padding: 3px 12px; color: #664d03 !important; cursor: default !important; }
+.filter-chip a { color: #664d03; text-decoration: none; font-weight: bold; margin-left: 4px; }
+.filter-chip a:hover { text-decoration: underline; }
 .stats-bar { height: 4vh; display: flex; align-items: center; padding: 0 15px; background: #fafafa; border-bottom: 1px solid #ddd; font-size: 0.95em; }
 .chart-container { height: 32vh; display: flex; flex-direction: row; padding: 0; background: white; box-sizing: border-box; width: 100%; }
 .chart-wrapper { flex: 1; position: relative; max-width: 33.333%; height: 100%; box-sizing: border-box; padding: 5px; }

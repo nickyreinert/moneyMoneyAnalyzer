@@ -20,18 +20,43 @@ Usage:
   import/export a rule set (tab "Export / Import"), including one someone
   (or an LLM, see below) generated for you.
 
-### Budget tab
+### One shared expense tree, two ways to navigate it
 
-Drilling here follows the bank's own Kategorie hierarchy (the same
-`AUSGABEN - Wohnen - Miete` tree used in the main drill-down), not the
-rule-engine categories — budgets are naturally hierarchical, so a parent's
-euro amount can be distributed across its children. Each row shows the
-average monthly spend for the selected year (PayPal double-counting
-excluded, same as everywhere else) next to a slider/number input for the
-budget and a status bar (green = within budget, red = over). Setting a
-budget on a parent category caps its children's sliders to that amount and
-shows how much is still unallocated. Budgets are stored in `localStorage`
-only.
+Both tabs drill through the exact same 3-level tree, built from the
+rule-engine classification (`src/data.js:expense_matches_path`), not the
+raw bank Kategorie split — that split has "AUSGABEN", "Paypal", "Other",
+"Forderungen" etc. as unrelated top-level siblings, since Paypal-Kategorie
+rows are literally `"Paypal"` with no `"AUSGABEN -"` prefix and blank ones
+fall back to `"Other"`. That's nonsensical for "where does my money go":
+PayPal is a payment method, not a spending category, and money spent
+through it should land in the same bucket as a direct-debit purchase for
+the same thing. The tree is:
+
+```
+Ausgaben (single root, every real-cashflow expense)
+└── group   (Fixkosten / Notwendige Ausgaben / Diskretionär / ...)
+    └── category   (Miete, Amazon, Supermarkt & Drogerie, ... — leaves)
+```
+
+- **Übersicht tab**: the combined/growth/average charts and the breadcrumb
+  drill down through this tree level by level (click a bar, click a
+  breadcrumb segment to jump back up).
+- **Money-flow leak chart / donut** (also in Übersicht): a flat, one-off
+  *category filter* on the transaction table instead — click a bar to jump
+  straight to one leaf category's transactions, independent of the
+  breadcrumb position. Only one of the two (breadcrumb drill-down vs. flat
+  filter) is ever active; starting one clears the other, and whichever is
+  active is shown in the single header bar above the charts (a breadcrumb
+  trail for the drill-down, a `🏷 Kategorie-Filter` chip for the flat
+  filter) instead of two separate indicators.
+- **Budget tab**: drills through the identical tree (`build_budget_report`
+  reuses the same path-matching helpers) so budgets naturally distribute
+  from a group down to its categories. Each row shows the average monthly
+  spend for the selected year (PayPal double-counting excluded, same as
+  everywhere else) next to a slider/number input for the budget and a
+  status bar (green = within budget, red = over). Setting a budget on a
+  parent caps its children's sliders to that amount and shows how much is
+  still unallocated. Budgets are stored in `localStorage` only.
 
 Files:
 - `index.html` - UI and module loader
