@@ -71,16 +71,34 @@ Notwendig vs. Diskretionär vs. Netto/Sparquote.
 
 ### Wichtiger Fallstrick bei PayPal-Exporten
 
-Wenn dein "Alle Konten"-Export auch das PayPal-Konto enthält, taucht jede
-per Lastschrift finanzierte PayPal-Zahlung **doppelt** auf: einmal als
-Zufluss `Bank Account (direct debit)` auf dem PayPal-Konto (reine
-Finanzierung, kein Einkommen) und einmal als der eigentliche Kauf beim
-Händler. Zählt man naiv alle positiven Beträge als Einnahmen, wird das
-Einkommen künstlich aufgebläht und verschleiert genau das Problem, das man
-eigentlich sehen will. Die mitgelieferte Regel `internal_paypal_funding`
-(Gruppe `internal_transfer`, `excludeFromTotals: true`) erkennt dieses
-Muster und schließt es aus allen Summen aus – Einnahmen, Ausgaben und
-Netto in diesem Dashboard sind dadurch bereinigt.
+Wenn dein "Alle Konten"-Export auch das PayPal-Konto enthält, gibt es
+gleich zwei Arten von Dopplung zu bereinigen:
+
+1. **PayPal-Finanzierung**: Jede per Lastschrift finanzierte PayPal-Zahlung
+   taucht als Zufluss `Bank Account (direct debit)` auf dem PayPal-Konto
+   auf (reine Finanzierung, kein Einkommen) *und* als der eigentliche Kauf
+   beim Händler. Zählt man naiv alle positiven Beträge als Einnahmen, wird
+   das Einkommen künstlich aufgebläht.
+2. **PayPal-Sammeleinzug**: Zusätzlich zieht PayPal auf dem echten
+   Bankkonto einen (oft gebündelten, mehrere Tage versetzten)
+   SEPA-Sammeleinzug von "PayPal Europe S.a.r.l. et Cie S.C.A." ein, der
+   dieselben Käufe **nochmal** als Ausgabe zeigt – nur ohne
+   Händlerdetail, weil auf der Bank-Seite nur "PayPal" steht statt der
+   Verwendungszweck-Notiz, die PayPal selbst mitliefert. Da diese
+   Sammeleinzüge Beträge und Datum nicht 1:1 den PayPal-Einzelkäufen
+   zuordnen lassen (Bündelung über mehrere Tage), lohnt sich kein
+   fragiles Datum/Betrag-Matching: stattdessen werden alle Buchungen
+   dieses SEPA-Absenders strukturell als Sammeleinzug erkannt und komplett
+   ausgeschlossen – die eigentliche Kategorisierung liefert ohnehin die
+   PayPal-Kaufbuchung mit dem Händlernamen.
+
+Zählt man beides naiv mit, wird sowohl das Einkommen künstlich aufgebläht
+als auch dieselbe Ausgabe zweimal gezählt – und verschleiert damit genau
+das Problem, das man eigentlich sehen will. Die mitgelieferten Regeln
+`internal_paypal_funding` und `internal_paypal_settlement` (Gruppe
+`internal_transfer`, `excludeFromTotals: true`) erkennen beide Muster und
+schließen sie aus allen Summen aus – Einnahmen, Ausgaben und Netto in
+diesem Dashboard sind dadurch bereinigt.
 
 ## Regeln konfigurieren: das "SETTING"-Format
 
