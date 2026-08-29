@@ -1,10 +1,21 @@
 // --- table.js ---
-import { expense_matches_path } from './data.js';
+import { expense_matches_path, tx_id } from './data.js';
+import { t } from './i18n.js';
 
 let sortState = { column: null, ascending: true };
 let filterState = {};
+// Row selection (for bulk category assignment) and category-popover state
+// are module-scoped so they survive individual re-renders (sort/filter
+// toggles rebuild the whole tbody).
+let selectedIds = new Set();
+let lastDisplayIds = [];
+let popoverEl = null;
 
-export function render_table(rows, tbodySelector, current_path, leakCategoryFilter = null) {
+function esc(str) {
+  return String(str ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+export function render_table(rows, tbodySelector, current_path, leakCategoryFilter = null, categoryOptions = [], onCategoryChange = null) {
   const tbody = document.querySelector(tbodySelector);
   tbody.innerHTML = '';
 
@@ -66,9 +77,127 @@ export function render_table(rows, tbodySelector, current_path, leakCategoryFilt
     const tr = document.createElement('tr');
     const euro = (r.betrag_cents / 100).toFixed(2);
     const cls = r._cls ? r._cls.category : '';
-    tr.innerHTML = `<td>${r.Datum}</td><td>${r.Name}</td><td>${r.Verwendungszweck}</td><td>${euro}</td><td>${cls}</td>`;
+    const id = tx_id(r);
+    const checked = selectedIds.has(id) ? ' checked' : '';
+    tr.innerHTML = `<td class="select-col"><input type="checkbox" class="row-select" data-id="${esc(id)}"${checked}></td>` +
+      `<td>${esc(r.Datum)}</td><td>${esc(r.Name)}</td><td>${esc(r.Verwendungszweck)}</td><td>${euro}</td>` +
+      `<td><button type="button" class="category-picker-btn" data-id="${esc(id)}" data-category="${esc(cls)}">${esc(cls) || '—'} <span class="caret">▾</span></button></td>`;
     tbody.appendChild(tr);
   });
+
+  lastDisplayIds = display.map(tx_id);
+
+  tbody.querySelectorAll('.row-select').forEach(cb => {
+    cb.addEventListener('change', (e) => {
+      const id = e.target.dataset.id;
+      if (e.target.checked) selectedIds.add(id); else selectedIds.delete(id);
+      update_select_all_checkbox();
+      update_bulk_bar(categoryOptions, onCategoryChange);
+    });
+  });
+
+  tbody.querySelectorAll('.category-picker-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      open_category_popover(btn, categoryOptions, (category) => {
+        onCategoryChange && onCategoryChange([btn.dataset.id], category);
+      });
+    });
+  });
+
+  update_select_all_checkbox();
+  update_bulk_bar(categoryOptions, onCategoryChange);
+}
+
+function update_select_all_checkbox() {
+  const cb = document.getElementById('selectAllRows');
+  if (!cb) return;
+  const total = lastDisplayIds.length;
+  const selectedVisible = lastDisplayIds.filter(id => selectedIds.has(id)).length;
+  cb.checked = total > 0 && selectedVisible === total;
+  cb.indeterminate = selectedVisible > 0 && selectedVisible < total;
+}
+
+// Shows/hides the "second header row" bulk-assign bar once more than one
+// row is selected, and wires its category picker to assign the chosen
+// category to every selected row at once.
+function update_bulk_bar(categoryOptions, onCategoryChange) {
+  const bar = document.getElementById('bulkActionsRow');
+  if (!bar) return;
+  const count = selectedIds.size;
+  bar.hidden = count <= 1;
+  if (count <= 1) return;
+
+  const countEl = document.getElementById('bulkSelectedCount');
+  if (countEl) countEl.textContent = t('table.selectedCount', { count });
+
+  const catBtn = document.getElementById('bulkCategoryBtn');
+  if (catBtn) {
+    catBtn.onclick = (e) => {
+      e.stopPropagation();
+      open_category_popover(catBtn, categoryOptions, (category) => {
+        onCategoryChange && onCategoryChange([...selectedIds], category);
+        selectedIds.clear();
+      });
+    };
+  }
+}
+
+function ensure_popover() {
+  if (popoverEl) return popoverEl;
+  popoverEl = document.createElement('div');
+  popoverEl.className = 'category-popover';
+  popoverEl.hidden = true;
+  popoverEl.innerHTML = `<input type="text" class="category-popover-filter"><div class="category-popover-list"></div>`;
+  document.body.appendChild(popoverEl);
+  document.addEventListener('click', (e) => {
+    if (!popoverEl.hidden && !popoverEl.contains(e.target) && e.target !== popoverEl._anchor && !popoverEl._anchor?.contains(e.target)) {
+      close_popover();
+    }
+  });
+  window.addEventListener('scroll', close_popover, true);
+  return popoverEl;
+}
+
+function close_popover() {
+  if (popoverEl) popoverEl.hidden = true;
+}
+
+// Opens the shared category dropdown below `anchorBtn`, with a quick-filter
+// text input on top and the (deduplicated) list of known categories below;
+// clicking one calls `onPick(category)`.
+function open_category_popover(anchorBtn, categoryOptions, onPick) {
+  const pop = ensure_popover();
+  pop._anchor = anchorBtn;
+  const filterInput = pop.querySelector('.category-popover-filter');
+  const listEl = pop.querySelector('.category-popover-list');
+  const current = anchorBtn.dataset.category || '';
+  filterInput.placeholder = t('table.filterCategories');
+
+  function renderList(query) {
+    const q = (query || '').toLowerCase().trim();
+    const opts = categoryOptions.filter(c => c.toLowerCase().includes(q));
+    listEl.innerHTML = opts.map(c =>
+      `<button type="button" class="category-popover-item${c === current ? ' active' : ''}" data-category="${esc(c)}">${esc(c)}</button>`
+    ).join('') || `<div class="category-popover-empty">${esc(t('table.noCategoryMatch'))}</div>`;
+    listEl.querySelectorAll('.category-popover-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        onPick(btn.dataset.category);
+        close_popover();
+      });
+    });
+  }
+
+  filterInput.value = '';
+  filterInput.oninput = () => renderList(filterInput.value);
+  renderList('');
+
+  const rect = anchorBtn.getBoundingClientRect();
+  pop.style.position = 'fixed';
+  pop.style.left = Math.min(rect.left, window.innerWidth - 280) + 'px';
+  pop.style.top = (rect.bottom + 4) + 'px';
+  pop.hidden = false;
+  filterInput.focus();
 }
 
 // Initialize sorting and filtering
@@ -90,7 +219,7 @@ export function init_table_controls(renderCallback) {
   });
   
   // Add filtering to inputs
-  document.querySelectorAll('th input').forEach(input => {
+  document.querySelectorAll('th[data-column] input').forEach(input => {
     const column = input.closest('th').getAttribute('data-column');
     // Restore saved filter value
     if (filterState[column]) {
@@ -105,4 +234,22 @@ export function init_table_controls(renderCallback) {
       e.stopPropagation();
     });
   });
+
+  const selectAllCb = document.getElementById('selectAllRows');
+  if (selectAllCb) {
+    selectAllCb.addEventListener('change', (e) => {
+      if (e.target.checked) lastDisplayIds.forEach(id => selectedIds.add(id));
+      else lastDisplayIds.forEach(id => selectedIds.delete(id));
+      renderCallback();
+    });
+  }
+
+  const clearSelectionBtn = document.getElementById('bulkClearSelectionBtn');
+  if (clearSelectionBtn) {
+    clearSelectionBtn.addEventListener('click', () => {
+      selectedIds.clear();
+      renderCallback();
+    });
+  }
 }
+

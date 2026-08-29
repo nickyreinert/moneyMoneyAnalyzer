@@ -32,6 +32,12 @@ const dict = {
     'table.filterVerwendungszweck': 'Verwendungszweck filtern',
     'table.filterBetrag': 'Betrag filtern',
     'table.filterKategorie': 'Kategorie filtern',
+    'table.selectAll': 'Alle auswählen',
+    'table.assignCategory': 'Kategorie zuweisen',
+    'table.clearSelection': 'Auswahl aufheben',
+    'table.filterCategories': '🔍 Kategorien filtern...',
+    'table.noCategoryMatch': 'Keine passende Kategorie',
+    'table.selectedCount': '{count} ausgewählt',
 
     'breadcrumbs.allCategories': 'Alle Kategorien',
 
@@ -164,6 +170,12 @@ const dict = {
     'table.filterVerwendungszweck': 'Filter Description',
     'table.filterBetrag': 'Filter Amount',
     'table.filterKategorie': 'Filter Category',
+    'table.selectAll': 'Select all',
+    'table.assignCategory': 'Assign category',
+    'table.clearSelection': 'Clear selection',
+    'table.filterCategories': '🔍 Filter categories...',
+    'table.noCategoryMatch': 'No matching category',
+    'table.selectedCount': '{count} selected',
 
     'breadcrumbs.allCategories': 'All Categories',
 

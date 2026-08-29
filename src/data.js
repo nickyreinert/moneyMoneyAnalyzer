@@ -33,6 +33,14 @@ export function parse_date(s) {
   return new Date(y, m-1, d);
 }
 
+// Stable identifier for a transaction row, used as the IndexedDB key for
+// manual category overrides (see db.js). Datum+Name+Verwendungszweck+cents
+// is unique enough in practice since bank exports embed a per-booking
+// Referenz inside Verwendungszweck.
+export function tx_id(r) {
+  return `${r.Datum}|${r.Name}|${r.Verwendungszweck}|${r.betrag_cents}`;
+}
+
 // Rows classified (via rules.js classify_all) as excludeFromTotals are
 // internal transfers (e.g. PayPal wallet funding legs) that have zero real
 // cashflow impact — the actual expense/income already shows up as its own

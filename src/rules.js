@@ -7,6 +7,8 @@
 // was given the CSV export and the schema documented in README.md, then
 // imported via the "Regeln importieren" button.
 
+import { tx_id } from './data.js';
+
 const STORAGE_KEY = 'classificationRules';
 const FALLBACK_GROUP = 'unclassified';
 
@@ -141,5 +143,33 @@ export function classify(tx, ruleSet) {
 // Call again whenever the rule set changes.
 export function classify_all(rows, ruleSet) {
   rows.forEach(r => { r._cls = classify(r, ruleSet); });
+  return rows;
+}
+
+// Applies user-picked manual category overrides (see db.js) on top of the
+// rule/bank classification computed by classify_all() - a manual choice
+// always wins. Must run *after* classify_all() on every reclassification.
+// Still needs some group for stats like Fixkosten totals, so it reuses the
+// group already associated with that category name elsewhere in the rule
+// set, falling back to whatever group classify_all() had assigned.
+export function apply_manual_overrides(rows, overridesById, ruleSet) {
+  if (!overridesById) return rows;
+  const groupByCategory = {};
+  (ruleSet.rules || []).forEach(rule => {
+    const cat = rule.category || rule.label;
+    if (cat && !(cat in groupByCategory)) groupByCategory[cat] = rule.group || FALLBACK_GROUP;
+  });
+  rows.forEach(r => {
+    const category = overridesById[tx_id(r)];
+    if (!category) return;
+    r._cls = {
+      ruleId: null,
+      label: category,
+      category,
+      group: groupByCategory[category] || (r._cls ? r._cls.group : FALLBACK_GROUP),
+      excluded: r._cls ? r._cls.excluded : false,
+      source: 'manual'
+    };
+  });
   return rows;
 }

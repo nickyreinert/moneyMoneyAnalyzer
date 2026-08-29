@@ -55,6 +55,22 @@ th { background-color: #f2f2f2; cursor: pointer; }
 th:hover { background-color: #ddd; }
 h1 { margin: 0; padding: 10px; }
 
+/* Transaction table: row selection + inline category picker */
+th.select-col, td.select-col { cursor: default; width: 32px; text-align: center; }
+th.select-col:hover { background-color: #f2f2f2; }
+.bulk-actions-row th { cursor: default; background: #eaf3ff; padding: 8px; }
+.bulk-actions-row th:hover { background: #eaf3ff; }
+#bulkSelectedCount { font-weight: bold; margin-right: 10px; }
+.category-picker-btn { background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 4px 8px; cursor: pointer; font: inherit; }
+.category-picker-btn:hover { border-color: #0066cc; }
+.category-popover { background: #fff; border: 1px solid #ccc; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); width: 260px; z-index: 2000; padding: 6px; }
+.category-popover-filter { width: 100%; box-sizing: border-box; padding: 6px; margin: 0 0 6px 0; border: 1px solid #ddd; border-radius: 4px; }
+.category-popover-list { max-height: 220px; overflow-y: auto; }
+.category-popover-item { display: block; width: 100%; text-align: left; padding: 6px 8px; background: none; border: none; cursor: pointer; border-radius: 4px; font: inherit; }
+.category-popover-item:hover { background: #f0f6ff; }
+.category-popover-item.active { background: #dbe9ff; font-weight: bold; }
+.category-popover-empty { color: #999; padding: 6px 8px; font-style: italic; }
+
 /* Modal Styles */
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4); }
 .modal-content { background-color: #fefefe; margin: 5% auto; padding: 0; border: 1px solid #888; width: 80%; max-width: 700px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }

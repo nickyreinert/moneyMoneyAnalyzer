@@ -73,7 +73,17 @@
         <div class="table-container">
             <table id="transactionTable">
                 <thead>
+                    <tr id="bulkActionsRow" class="bulk-actions-row" hidden>
+                        <th colspan="6">
+                            <span id="bulkSelectedCount"></span>
+                            <button type="button" id="bulkCategoryBtn" class="category-picker-btn" data-category="">
+                                <span data-i18n="table.assignCategory">Kategorie zuweisen</span> <span class="caret">▾</span>
+                            </button>
+                            <button type="button" id="bulkClearSelectionBtn" data-i18n="table.clearSelection">Auswahl aufheben</button>
+                        </th>
+                    </tr>
                     <tr>
+                        <th class="select-col"><input type="checkbox" id="selectAllRows" data-i18n-title="table.selectAll" title="Alle auswählen"></th>
                         <th data-column="date"><span data-i18n="table.date">Date</span> <input type="text" data-i18n-placeholder="table.filterDate" placeholder="Filter Date"></th>
                         <th data-column="name"><span data-i18n="table.name">Name</span> <input type="text" data-i18n-placeholder="table.filterName" placeholder="Filter Name"></th>
                         <th data-column="verwendungszweck"><span data-i18n="table.verwendungszweck">Verwendungszweck</span> <input type="text" data-i18n-placeholder="table.filterVerwendungszweck" placeholder="Filter Verwendungszweck"></th>
@@ -233,10 +243,11 @@
         } from './src/data.js';
         import { render_combined_chart, render_growth_chart, render_averages_chart, render_leak_chart, render_group_summary_chart } from './src/charts.js';
         import { render_table, init_table_controls } from './src/table.js';
-        import { load_default_rule_set, get_stored_rule_set, save_rule_set, classify_all } from './src/rules.js';
+        import { load_default_rule_set, get_stored_rule_set, save_rule_set, classify_all, apply_manual_overrides } from './src/rules.js';
         import { get_language, set_language, apply_static_i18n, t } from './src/i18n.js';
         import { get_csv_config, save_csv_config, default_csv_config } from './src/csv_config.js';
         import { load_footer } from './src/footer.js';
+        import { load_all_overrides, save_overrides } from './src/db.js';
 
         let currentYear = '';
         let tableControlsInitialized = false;
@@ -246,6 +257,35 @@
         let leakCategoryFilter = null;
         let budgets = {};
         let budget_current_path = [];
+        let overridesById = {};
+
+        // Re-runs rule classification then re-applies manual per-transaction
+        // category overrides on top - must be called after every ruleSet or
+        // overridesById change so charts/table stay in sync.
+        function reclassify() {
+            classify_all(module_data, ruleSet);
+            apply_manual_overrides(module_data, overridesById, ruleSet);
+        }
+
+        // Category list offered in the row/bulk dropdown: every category
+        // known to the rule set plus whatever categories are currently in
+        // use (bank-fallback / manual overrides), deduplicated and sorted.
+        function collect_category_options() {
+            const fromRules = (ruleSet.rules || []).map(r => r.category || r.label).filter(Boolean);
+            const fromData = module_data.map(r => r._cls ? r._cls.category : null).filter(Boolean);
+            return [...new Set([...fromRules, ...fromData])].sort((a, b) => a.localeCompare(b, 'de'));
+        }
+
+        // Persists a manual category assignment (single row or bulk
+        // selection) to IndexedDB, then reclassifies and re-renders.
+        async function assign_category(ids, category) {
+            if (!category) return;
+            await save_overrides(ids.map(id => [id, category]));
+            ids.forEach(id => { overridesById[id] = category; });
+            reclassify();
+            render_all();
+            render_budget();
+        }
 
         // ===== MAIN TAB NAVIGATION (Übersicht / Budget) =====
         document.querySelectorAll('.main-tab-btn').forEach(btn => {
@@ -516,7 +556,7 @@
             render_group_summary_chart(groupSummary, ruleSet.groups, 'groupSummaryChart');
             render_stats_bar(groupSummary);
 
-            render_table(fd, '#transactionTable tbody', current_path, leakCategoryFilter);
+            render_table(fd, '#transactionTable tbody', current_path, leakCategoryFilter, collect_category_options(), assign_category);
             render_breadcrumbs();
 
             // Initialize table controls after first render
@@ -591,7 +631,7 @@
                 localStorage.setItem('csvData', csv);
                 localStorage.setItem('csvDataConfig', JSON.stringify(cfg));
                 parse_csv(csv, cfg);
-                classify_all(module_data, ruleSet);
+                reclassify();
                 populate_year_buttons();
                 tableControlsInitialized = false;
                 leakCategoryFilter = null;
@@ -618,7 +658,7 @@
                 localStorage.setItem('csvData', csvData);
                 localStorage.removeItem('csvDataConfig');
                 parse_csv(csvData);
-                classify_all(module_data, ruleSet);
+                reclassify();
                 populate_year_buttons();
                 tableControlsInitialized = false;
                 leakCategoryFilter = null;
@@ -873,7 +913,7 @@
             save_rule_set(ruleSet);
             modal.style.display = 'none';
             if (module_data.length > 0) {
-                classify_all(module_data, ruleSet);
+                reclassify();
                 render_all();
             }
         });
@@ -1035,13 +1075,14 @@
             const stored = get_stored_rule_set();
             ruleSet = stored || JSON.parse(JSON.stringify(defaultRuleSet));
             load_budgets();
+            overridesById = await load_all_overrides();
 
             const storedCsv = localStorage.getItem('csvData');
             if (storedCsv) {
                 const storedCsvConfigRaw = localStorage.getItem('csvDataConfig');
                 const storedCsvConfig = storedCsvConfigRaw ? JSON.parse(storedCsvConfigRaw) : undefined;
                 parse_csv(storedCsv, storedCsvConfig);
-                classify_all(module_data, ruleSet);
+                reclassify();
                 populate_year_buttons();
                 tableControlsInitialized = false;
                 const storedPath = localStorage.getItem('currentPath');
